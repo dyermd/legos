@@ -309,7 +309,9 @@ if [ "$RUN_COV" == "True" ]; then
 	else
 
 		# Only check the flags if TVC or Cov has not yet been run
-		checkFlags 
+		if [ "$RUN_TVC" != "True" ]; then
+			checkFlags 
+		fi
 		# If there is no .cov.xls file and the other bed files are found, run coverage analysis
 		runCov
 	fi
@@ -329,9 +331,7 @@ if [ "$RUN_TVC" == "True" ]; then
 		echo "$OUTPUT_DIR already has a .vcf file. Not runnning TVC. (use --forced to have tvc run anyway)"
 	else
 		# Only check the flags if TVC or Cov has not yet been run
-		if [ "$RUN_COV" != "True" ]; then
-			checkFlags 
-		fi
+		checkFlags 
 		# If there is no vcf file present for the current run, and the project BED is found, then run TVC.
 		runTVC
 	fi
