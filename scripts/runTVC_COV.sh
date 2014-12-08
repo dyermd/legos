@@ -294,10 +294,6 @@ function runTVC {
 # ----------------------------------------------------------
 
 
-if [ "$RUN_COV" == "True" -o "$RUN_TVC" == "True" ]; then
-	checkFlags 
-fi
-
 if [ "$RUN_COV" == "True" ]; then
 	# Do file checks first
 	if [ ! -f $MERGED_BED ]; then
@@ -311,6 +307,9 @@ if [ "$RUN_COV" == "True" ]; then
 	elif [ "$TARGETSEQ" == "True" -a "`find ${OUTPUT_DIR}/*.target.cov.xls 2>/dev/null`" -a "$FORCED" != "True" ]; then
 		echo "$OUTPUT_DIR already has a .target.cov.xls file. Not running Coverage Analysis. (use --forced to have cov analysis run anyway)"
 	else
+
+		# Only check the flags if TVC or Cov has not yet been run
+		checkFlags 
 		# If there is no .cov.xls file and the other bed files are found, run coverage analysis
 		runCov
 	fi
@@ -329,6 +328,10 @@ if [ "$RUN_TVC" == "True" ]; then
 	elif [ "`find ${OUTPUT_DIR}/${TVC_VERSION}*.vcf 2>/dev/null`" -a "$FORCED" != "True" ]; then
 		echo "$OUTPUT_DIR already has a .vcf file. Not runnning TVC. (use --forced to have tvc run anyway)"
 	else
+		# Only check the flags if TVC or Cov has not yet been run
+		if [ "$RUN_COV" != "True" ]; then
+			checkFlags 
+		fi
 		# If there is no vcf file present for the current run, and the project BED is found, then run TVC.
 		runTVC
 	fi
