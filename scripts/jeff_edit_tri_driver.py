@@ -187,6 +187,7 @@ if (__name__ == "__main__"):
 	for job_filter in options.job_filters:
 		if job_filter != "qc_tvc" and job_filter != "qc_compare" and job_filter != 'qc_sample':
 			print "USAGE ERROR: %s is not an available job filter. Use -h for help"%job_filter
+			parser.print_help()
 			sys.exit(8)
 
 	#set up the logging
