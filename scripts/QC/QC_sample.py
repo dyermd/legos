@@ -69,7 +69,7 @@ class QC_Sample:
 				normal_run2_json = json.load(open(normal_run2))
 				# check to see if these two runs should be QC'd together.
 				if int(normal_run1_json['run_num']) < int(normal_run2_json['run_num']):
-					QC_2Runs(run1, run2, pref, pref)
+					self.QC_2Runs(normal_run1, normal_run2, pref, pref)
 
 	# QC the tumor runs with each other
 	def QC_tumor_runs(self, tumor_runs, pref):
@@ -83,14 +83,14 @@ class QC_Sample:
 				tumor_run2_json = json.load(open(tumor_run2))
 				# check to see if these two runs should be QC'd together.
 				if int(tumor_run1_json['run_num']) < int(tumor_run2_json['run_num']):
-					QC_2Runs(run1, run2, pref, pref)
+					self.QC_2Runs(tumor_run1, tumor_run2, pref, pref)
 
 	# now QC the tumor and normal runs together.
 	def QC_normal_tumor_runs(self, normal_runs, tumor_runs):
 		for normal_run in normal_runs:
 			for tumor_run in tumor_runs:
 					# QC the normal and tumor runs together
-					QC_2Runs(normal_run, tumor_run, 'normal_', 'tumor_')
+					self.QC_2Runs(normal_run, tumor_run, 'normal_', 'tumor_')
 
 	# @param run the run for which to run TVC and coverage analysis
 	def runTVC_COV(self, run, pref):
@@ -134,16 +134,18 @@ class QC_Sample:
 	
 		# QC_getRunInfo.sh gets the following metrics: % amps covered at the beg and end, Ts/Tv ratio,	# Total variants,	# HET variants, 	# HOM variants
 		# It also gets the metrics from the report.pdf if it is available.
+		# I had to put it all on one line because python kept complaining about formatting issues.
 		qcgetruninfo="bash %s/QC_getRunInfo.sh "%self.__QCDirectory + \
-				"--run_dir % "%run_json['run_folder'] + \
-				"--out_dir %/Analysis_Files/temp_files "%run_json['run_folder'] + \
-				"--amp_cov_cutoff % "%self.sample_json['analysis']['settings']['min_amplicon_coverage'] + \
-				"--depth_cutoff % "%self.sample_json['analysis']['settings']['%smin_base_coverage'%pref] + \
-				"--wt_hom_cutoff % % "%(self.sample_json['analysis']['settings']['%swt_cutoff'%pref], self.sample_json['analysis']['settings']['%shom_cutoff'%pref])+ \
-				"--beg_bed  % "%self.sample_json['analysis']['settings']['beg_bed'] + \
-				"--end_bed % "%self.sample_json['analysis']['settings']['end_bed'] + \
-				"--project_bed % "%self.sample_json['analysis']['settings']['project_bed'] + \
-				"--ptrim_json %/PTRIM.bam "%run_json['run_folder']
+				"--run_dir %s "%run_json['run_folder'] + \
+				"--out_dir %s/Analysis_Files/temp_files "%run_json['run_folder'] + \
+				"--amp_cov_cutoff %s "%self.sample_json['analysis']['settings']['min_amplicon_coverage'] + \
+				"--depth_cutoff %s "%self.sample_json['analysis']['settings']['%smin_base_coverage'%pref] + \
+				"--wt_hom_cutoff %s %s "%(self.sample_json['analysis']['settings']['%swt_cutoff'%pref], self.sample_json['analysis']['settings']['%shom_cutoff'%pref])+ \
+				"--beg_bed  %s "%self.sample_json['analysis']['settings']['beg_bed'] + \
+				"--end_bed %s "%self.sample_json['analysis']['settings']['end_bed'] + \
+				"--project_bed %s "%str(self.sample_json['analysis']['settings']['project_bed']) + \
+				"--ptrim_json %s/PTRIM.bam "%run_json['run_folder']
+
 		#if [ "$CDS_BED" != "" ]; then
 		#	qcgetruninfo="$qcgetruninfo --cds_bed $CDS_BED "
 		# QC_getRunInfo's will run the pool dropout script 
@@ -176,26 +178,26 @@ class QC_Sample:
 			if 'results_QC_json' in self.sample_json:
 				output_json = self.sample_json['results_QC_json']
 			else:
-				output_json = "%/results_QC.json"%self.sample_json['output_folder']
+				output_json = "%s/results_QC.json"%self.sample_json['output_folder']
 			
 			# QC these two runs for every chr type that is listed in chromosomes to analyze.
 			for chromosome in self.sample_json['analysis']['settings']['chromosomes_to_analyze']:
 				# QC these two runs. QC_2Runs.sh takes the two run dirs and finds a .bam, .vcf, and .cov.xls file in the same dir as the .bam file
-				qc2runs = "bash ${QC_SCRIPTS}/QC_2Runs.sh " + \
-				"--run_dirs % % "%(run1_json['run_folder'], run2_json['run_folder']) + \
-				"--json_out % "%output_json + \
-				"--project_bed % "%self.sample_json['project_bed'] + \
-				"-a % "%self.sample_json['analysis']['settings']['min_amplicon_coverage'] + \
-				"-jp % % "%(self.sample_json['analysis']['settings']['%tvc_json'%pref1], self.sample_json['analysis']['settings']['%tvc_json'%pref2]) + \
-				"-d % % "%(self.sample_json['analysis']['settings']['%smin_base_coverage'%pref1], self.sample_json['analysis']['settings']['%smin_base_coverage'%pref2]) + \
-				"-gt % % % % "%(self.sample_json['analysis']['settings']['%swt_cutoff'%pref1], self.sample_json['analysis']['settings']['%shom_cutoff'%pref1], self.sample_json['analysis']['settings']['%swt_cutoff'%pref2], self.sample_json['analysis']['settings']['%shom_cutoff'%pref2]) 
+				qc2runs = "bash %s/QC_2Runs.sh "%self.__QCDirectory + \
+				"--run_dirs %s %s "%(run1_json['run_folder'], run2_json['run_folder']) + \
+				"--json_out %s "%output_json + \
+				"--project_bed %s "%self.sample_json['analysis']['settings']['project_bed'] + \
+				"-a %s "%self.sample_json['analysis']['settings']['min_amplicon_coverage'] + \
+				"-jp %s %s "%(self.sample_json['analysis']['settings']['%stvc_json'%pref1], self.sample_json['analysis']['settings']['%stvc_json'%pref2]) + \
+				"-d %s %s "%(self.sample_json['analysis']['settings']['%smin_base_coverage'%pref1], self.sample_json['analysis']['settings']['%smin_base_coverage'%pref2]) + \
+				"-gt %s %s %s %s "%(self.sample_json['analysis']['settings']['%swt_cutoff'%pref1], self.sample_json['analysis']['settings']['%shom_cutoff'%pref1], self.sample_json['analysis']['settings']['%swt_cutoff'%pref2], self.sample_json['analysis']['settings']['%shom_cutoff'%pref2]) 
 
 				# now set the output_dir
-				output_dir = "%s/%svs%s"%(self.sample_json['output_folder'], chromosome, run1_json['run_name'], run2_json['run_name'])
+				output_dir = "%s/%s%svs%s"%(self.sample_json['output_folder'], chromosome, run1_json['run_name'], run2_json['run_name'])
 				if chromosome != "all":
 					qc2runs += "--subset_chr %s "%chromosome
 					output_dir = "%s/%s%svs%s"%(self.sample_json['output_folder'], chromosome, run1_json['run_name'], run2_json['run_name'])
-				"--output_dir % "%output_dir
+				qc2runs += "--output_dir %s "%output_dir
 				#if [ "$CDS_BED" != "" ]; then
 				#	qc2runs="$qc2runs -cb $CDS_BED "
 				#if [ "$SUBSET_BED" != "" ]; then
