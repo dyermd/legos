@@ -6,6 +6,7 @@ import os.path
 import sys
 import re
 import json
+from alignment_stats import Align_Stats
 
 class QC_Sample:
 	def __init__(self, options):
@@ -170,7 +171,7 @@ class QC_Sample:
 		new_run_json = json.load(open(run))
 		if 'median_read_length' not in new_run_json or new_run_json['median_read_length'] == "":
 			Align_Stats = Align_Stats()
-			new_run_json['median_read_length'] = AlignStats.calcMedianFromBam(new_run_json['analysis']['files'][0])
+			new_run_json['median_read_length'] = Align_Stats.calcMedianFromBam(new_run_json['analysis']['files'][0])
 			#write new json file
 			with open(run, 'w') as newJobFile:
 				json.dump(new_run_json, newJobFile, sort_keys=True, indent=4)

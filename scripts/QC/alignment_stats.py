@@ -71,7 +71,7 @@ if __name__ == '__main__':
 	parser.add_option('-i', '--input', dest='input', help='The input bam or alignment file of which you wish to gather stats. currently on the median read length is reported. ')
 	parser.add_option('-o', '--output', dest='output', help='The output file. If no output file is specified, output will be written to the screen')
 	parser.add_option('-d', '--debug', dest='debug', action='store_true', help='Will not delete the bam.alignment file generated and will print more info to the screen.')
-    parser.add_option('-j', '--json', dest='json', help='The json file')
+	parser.add_option('-j', '--json', dest='json', help='The json file')
 
 	(options, args) = parser.parse_args()
 
