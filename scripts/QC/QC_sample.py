@@ -166,6 +166,15 @@ class QC_Sample:
 			sys.stderr.write("%s QC_getRunInfo.sh got a usage error...\n"%run)
 			self.no_errors = False
 
+		# if the median read length was not gathered from the report PDF, or if this is a merged bam file, then calculate the median read length
+		new_run_json = json.load(open(run))
+		if 'median_read_length' not in new_run_json or new_run_json['median_read_length'] == "":
+			Align_Stats = Align_Stats()
+			new_run_json['median_read_length'] = AlignStats.calcMedianFromBam(new_run_json['analysis']['files'][0])
+			#write new json file
+			with open(run, 'w') as newJobFile:
+				json.dump(new_run_json, newJobFile, sort_keys=True, indent=4)
+
 	# QC two runs with each other
 	# For Tumor / Normal pairs, Run1 should be the normal run, and Run2 should be the tumor run.
 	# Output will be put into a dir like: sample1/QC/Run1vsRun2
