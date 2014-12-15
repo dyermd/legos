@@ -39,7 +39,7 @@ class JobManager:
         #load the job file
         jsonData = open(jobFile)
         fileData = json.load(jsonData)
-        logging.debug('%s - %s' % (getTimestamp(), fileData))
+        #logging.debug('%s - %s' % (getTimestamp(), fileData))
 
         #create the output folder
         if 'name' in fileData:
