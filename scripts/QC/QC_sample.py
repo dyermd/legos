@@ -114,7 +114,7 @@ class QC_Sample:
 			   coverageAnalysisFlag = '--targetseq'
 	
 		run_json = json.load(open(run))
-		print run_json 
+		#print run_json 
 	
 		for file in run_json['analysis']['files']:
 			command = 'bash %s/scripts/runTVC_COV.sh '%self.__softwareDirectory + \
