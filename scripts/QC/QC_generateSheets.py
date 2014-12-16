@@ -23,7 +23,7 @@ class XLSX_Writer():
 		# initialize self.formats with a blank string in case there are times where there is no format
 		# this dictionary will hold all of the self.formats to be used by QC_genSheets
 		self.formats = {'': ''}
-		self.workbook = self.workbook
+		self.workbook = workbook
 		self.__setupWorkbook()
 
 	# @param out_file_name the name of the outuput xlsx
@@ -126,15 +126,13 @@ class XLSX_Writer():
 				self.QCsheet.write(row, col, metrics[key], self.formats[write_format])
 		return 1
 
-
-	# @param run_metrics the dictionary containing all of the run_metrics
-	def writeRunMetrics(self, run_metrics):
-		# Infosheet is where all of the metrics about each run will be written
+	def __writeRunMetricHeaders(self):
+		# QCsheet is where all of the metrics about each run will be written
 		self.QCsheet = self.workbook.add_worksheet("QC Metrics")
 		self.QCsheet.freeze_panes(1,2)
 		
 		# First write the QC metrics for each run of each sample.
-		# Write the header
+		# Write the header line. there could definitely be a better way of doing this, but this is what I figured out for now. Just comment and uncomment as needed.
 		col = 0
 		self.QCsheet.write(0,col, "Sample #", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
@@ -247,7 +245,11 @@ class XLSX_Writer():
 		self.QCsheet.set_column(col,col+20,12, self.formats['center'])
 		
 		self.QCsheet.set_row(0,100, self.formats['header_format'])
-		
+
+	# @param run_metrics the dictionary containing all of the run_metrics
+	def writeRunMetrics(self, run_metrics):
+		# first write the headers
+		self.__writeRunMetricHeaders()
 		row = 1
 		azure = '_azure'
 		
@@ -342,6 +344,8 @@ class XLSX_Writer():
 			# self.MRsheet is the sheet where all of the 3x3 tables for each of the multiple runs of each sample will be written
 			sheet = self.workbook.add_worksheet("3x3 tables")
 	
+		row = 1
+		col = 1
 		# QC_comparisons was made by QC_stats.py and has all of the needed 3x3 table stats.
 		for sample in sorted(QC_comparisons):
 			print "Writing 3x3 tables for sample: " + sample
@@ -349,64 +353,70 @@ class XLSX_Writer():
 			if self.sheet_per_sample:
 				# self.MRsheet is the sheet where all of the 3x3 tables for each of the multiple runs of each sample will be written
 				sheet = self.workbook.add_worksheet(sample)
+				row = 1
+				col = 1
 	
-			row = 2
-			col = 1
 			#first make the header for sample.
-			sheet.write(row-1, col, sample, self.formats['header_format2'])
+			sheet.write(row, col, sample, self.formats['header_format2'])
+			row += 2
 	
 			# iterate through the different data sizes (i.e. all, chr1, 718, etc.)
-			for data_type in sorted(QC_comparisons):
+			for data_type in sorted(QC_comparisons[sample]):
 				# comp_type is is either normal_normal, tumor_normal, or tumor_tumor and contains the specified types of comparisons
 				# row will be updated as the 3x3 tables are written so that row will always be in teh correct place.
 				if "normal_normal" in QC_comparisons[sample][data_type]:
-					sheet.write(row, col, "%s: Normal vs Normal"%data_type, self.formats['header_format2'])
-					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['normal_normal'], row+1, col)
+					#sheet.write(row, col, "%s: Normal vs Normal"%data_type, self.formats['header_format2'])
+					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['normal_normal'], row, col)
 				if "tumor_tumor" in QC_comparisons[sample][data_type]:
-					sheet.write(row, col, "%s: Tumor vs Tumor"%data_type, self.formats['header_format2'])
-					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_tumor'], row+1, col)
+					#sheet.write(row, col, "%s: Tumor vs Tumor"%data_type, self.formats['header_format2'])
+					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_tumor'], row, col)
 				if "tumor_normal" in QC_comparisons[sample][data_type]:
-					sheet.write(row, col, "%s: Normal vs Tumor"%data_type, self.formats['header_format2'])
-					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_normal'], row+1, col)
+					#sheet.write(row, col, "%s: Normal vs Tumor"%data_type, self.formats['header_format2'])
+					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_normal'], row, col)
 
 					
 	# write the comparisons of a sample. 
 	# Will also handle the row, col increases and such
-	def __write_comparisons(sheet, data_type, qc_comparisons, start_row, start_col)
+	def __write_comparisons(self, sheet, data_type, qc_comparisons, start_row, start_col):
+		row2 = start_row
+		highest_row = 0
+		col2 = start_col
 		# loop through the different comparisons of the given data_type and comparison type.
 		for runs_compared, table_values in sorted(qc_comparisons.iteritems()):
 			run1_num = int(runs_compared.split('vs')[0][-1])
 			run2_num = int(runs_compared.split('vs')[1][-1])
 			# if the run types match, then traingulate by each row being a new run2_num, and each col being a new run1_num
-			if table_values['run1_type'] == table_value['run2_type']:
-				row = start_row + (run2_num-2)*11
-				col = start_col + (run1_num-1)*6
+			if table_values['run1_type'] == table_values['run2_type']:
+				row2 = start_row + (run2_num-2)*11
+				col2 = start_col + (run1_num-1)*6
 			# if the run types don't match (i.e. tumor normal), then traingulate by each row being a new normal run(run1_num), and each col being a new tumor run (run2_num)
 			else:
-				row = start_row + (run1_num-2)*11
-				col = start_col + (run2_num-1)*6
+				row2 = start_row + (run1_num-1)*11
+				col2 = start_col + (run2_num-1)*6
+			if row2 > highest_row:
+				highest_row = row2
 			# now write the 3x3 tables on the given sheet for the given data_type and comparison type
-			self.__write3x3Table(sheet, data_type, runs_compared, table_values, row, col)
-	
-		return row
+			self.__write3x3Table(sheet, data_type, runs_compared, table_values, row2, col2)
+		return highest_row+11
 
 	# function to write a 3x3 table to the given sheet
 	def __write3x3Table(self, sheet, data_type, runs_compared, table_values, row, col):
 		#first make the header for each table.
 		header = "%s: %s    -  vs  -    %s"%(data_type, runs_compared.split('vs')[0], runs_compared.split('vs')[1]) # i.e. sample1  Run1  -  vs  - Run2
-		sheet.write(row-1, col, header, self.formats['header_format2'])
+		sheet.write(row, col, header, self.formats['header_format2'])
 	
 		# Write the err rate, % available bases and the # of GTs reassigned to the spreadsheet
 		header_error_rate = "%s:  %.3e"% ("error rate", float(table_values["error_rate"]))
-		row =+ 1;
-		sheet.write(row-1, col, header_error_rate)
-		row =+ 1
+		row += 1;
+		sheet.write(row, col, header_error_rate)
+		row += 1
 		header_perc_bases = "%s:  %.2f"% ("% available bases", float(table_values["perc_avail_bases"])*100)
-		sheet.write(row-1, col, header_perc_bases)
-		row =+ 1
+		sheet.write(row, col, header_perc_bases)
+		row += 1
 		if 'reassigned_GTs' in table_values:
 			reassigned_GTs = "%s:  %d"% ("# of GTs reassigned", table_values["reassigned_GTs"])
-			sheet.write(row-1, col, reassigned_GTs)
+			sheet.write(row, col, reassigned_GTs)
+			row += 1;
 		
 		#now write the table headers
 		sheet.write(row+1, col, "WT", self.formats['right'])
@@ -448,7 +458,7 @@ if (__name__ == "__main__"):
 	parser = OptionParser()
 	
 	# All of the arguments are specified here.
-	parser.add_option('-p', '--project_path', dest='project_path', action='append', help='REQUIRED: /path/to/the/project_dir. Can provide muliple paths')
+	parser.add_option('-p', '--project_path', dest='project_paths', action='append', help='REQUIRED: /path/to/the/project_dir. Can provide muliple paths')
 	parser.add_option('-r', '--run_info_only', dest='run_info_only', action="store_true", default=False, help="Get only the individual run's info. Default is to get both run info and the 3x3 table qc_comparisons")
 	parser.add_option('-q', '--qc_info_only', dest='qc_info_only', action="store_true", default=False, help="Get only the 3x3 table QC comparison info. Default is to get both run info and the 3x3 table qc_comparisons")
 	parser.add_option('-S', '--sheet_per_sample', dest='sheet_per_sample', action="store_true", default=False, help="Will write a new sheet containing the 3x3 table comparisons per sample.")
@@ -457,7 +467,7 @@ if (__name__ == "__main__"):
 	# Gets all of the command line arguments specified and puts them into the dictionary args
 	(options, args) = parser.parse_args()
 	
-	if not options.project_path:
+	if not options.project_paths:
 		print "USAGE_ERR: --project_path is required! Use -h for help"
 		parser.print_help()
 		sys.exit(8)
@@ -475,20 +485,24 @@ if (__name__ == "__main__"):
 	else:
 		xlsx_writer.sheet_per_sample = False
 
+	runs_json_data = {}
+	QC_3x3_json_data = {}
 	# Get the data available by finding the json files in the project_path specified.
-	elif options.run_info_only:
-		json_data = QC_stats.main_runs_only(options.project_path)
-		xlsx_writer.writeRunMetrics(json_data)
-	elif options.qc_info_only:
-		QC_json_data = QC_stats.main_QC_only(options.project_path)
-		xlsx_writer.write3x3Tables(QC_json_data)
-	else:
-		print "Generating Spreadsheets for both run_info and the 3x3 QC tables"
-		json_data = QC_stats.main_runs_only(options.project_path)
-		xlsx_writer.writeRunMetrics(json_data)
-		QC_json_data = QC_stats.main_QC_only(options.project_path)
-		xlsx_writer.write3x3Tables(QC_json_data)
+	for project_path in options.project_paths:
+		# if the 3x3 tables are not the only thing you want, then get the QC run metrics
+		if not options.qc_info_only:
+			runs_json_data = dict(runs_json_data.items() + QC_stats.main_runs_only(project_path).items())
+		# if the QC run metrics are not the only thing you want, then get the 3x3 tables
+		if not options.run_info_only:
+			QC_3x3_json_data = dict(QC_3x3_json_data.items() + QC_stats.main_QC_only(project_path).items())
+
+	if not options.qc_info_only:
+		print "Generating the main run QC run metrics Spreadsheet" 
+		xlsx_writer.writeRunMetrics(runs_json_data)
+	if not options.run_info_only:
+		print "Generating the 3x3 QC table Spreadsheets" 
+		xlsx_writer.write3x3Tables(QC_3x3_json_data)
 	
-	print "Finished generating the QC table"
+	print "Finished generating the QC table: " + options.out
 	xlsx_writer.workbook.close()
 
