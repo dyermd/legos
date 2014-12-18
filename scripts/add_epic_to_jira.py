@@ -35,62 +35,20 @@ class IssueManager:
         self.__jira.kill_session()
         self.__greenhopper.kill_session()
 
-    ## Add the epic link to an issue
+    ## Create a new epic
     # @param self The object pointer
-    # @param issue The issue ID
-    # @param epic The epic ID
-    def attachEpic(self, issue, epic):
-        #attach the epic
-        self.__greenhopper.add_issues_to_epic(epic, [issue])
-
-    ## Create an issue set by calling the createIssue and createSubtask methods
-    # @param self The object pointer
-    # @param options The option dictionary
-    # @returns A dictionary of issues that were created
-    def createIssueSet(self, options):
-        #dictionary to store jira issues
-        issues = {}
-
-        #set up the description
-        description = '<h3>User Experience</h3>%s<h3>Acceptance Criteria</h3><ul><li></li></ul>' % (options.description)
-
-        #create the parent issue
-        parentID = self.createIssue(options.story, 'Story', description, options)
-        issues[parentID] = '%s\t%s\t%s' % (parentID, 'Story', options.story)
-
-        #create the tasks for development and testing depending on the product
-        for specificProduct in options.product.split(';'):
-            issue1 = self.createIssue('Implementation (%s): %s' % (specificProduct, options.story), 'Implement', '', options)
-            issues[issue1] = '%s\t%s\t%s' % (issue1, 'Implement', options.story)
-            issue2 = self.createIssue('Create Unit Tests (%s): %s' % (specificProduct, options.story), 'Unit Test', '', options)
-            issues[issue2] = '%s\t%s\t%s' % (issue2, 'Unit Test', options.story)
-            issue3 = self.createIssue('Verification (%s): %s' % (specificProduct, options.story), 'Verification Test', '', options)
-            issues[issue3] = '%s\t%s\t%s' % (issue3, 'Verification Test', options.story)
-
-            #create the links
-            self.linkIssues(parentID, issue1, 'Develop')
-            self.linkIssues(parentID, issue2, 'Verify')
-            self.linkIssues(parentID, issue3, 'Verify')
-
-        #print the ids
-        return(parentID, issues)
-
-    ## Create a new issue
-    # @param self The object pointer
-    # @param summary The summary of the issue
-    # @param description The description of the issue
-    # @param issueType The type of the issue
     # @param options The option dictionary
     # @returns The JIRA issue identifier
-    def createIssue(self, summary, issueType, description, options):
-        #create an issue by setting up the dictionary
+    def createEpic(self, options):
+        #create an epic by setting up the dictionary
         issueDict = {
             #'assignee': {'name':'Unassigned'},
             'project': {'key':options.project},
             'priority' : {'name':options.priority},
-            'summary': summary,
-            'description': description,
-            'issuetype' : {'name':issueType},
+            'summary': options.epic,
+            'customfield_10401': options.epic,
+            'description': options.description,
+            'issuetype' : {'name':'Epic'},
             'labels':[
                    'AddedViaAPI',
                    'APISetFixVersion'
@@ -112,18 +70,13 @@ class IssueManager:
             #software product
             issueDict['customfield_11100'] = {'value':productLabel}
 
-
-        #if it is a story type then we want ot add a label for acceptance criteria too
-        if issueType == 'Story':
-            issueDict['labels'].append('NeedAcceptanceCriteria')
-
         #add the components if there are any
         if(not options.components == ''):
             issueDict['components'] = self.addComponents(options.components)
 
         #now create the issue
-        print issueDict
-        newIssue = self.__jira.create_issue(fields=issueDict)
+        #print issueDict
+        newIssue = self.__greenhopper.create_issue(fields=issueDict)
 
         #return the id
         return(newIssue.key)
@@ -166,10 +119,8 @@ if (__name__ == '__main__'):
     #task options
     parser.add_option('-c', '--components', dest='components', help='The ;-delimited list of components')
     parser.add_option('-d', '--product', dest='product', help='The software product to attach the story too')
-    parser.add_option('-e', '--epic', dest='epic', help='The epic ID')
     parser.add_option('-n', '--description', dest='description', help='The story description', default='')
-    parser.add_option('-r', '--req', dest='requirement', help='The requirement ID')
-    parser.add_option('-t', '--story', dest='story', help='The story you want to create')
+    parser.add_option('-e', '--epic', dest='epic', help='The epic you want to create')
     parser.add_option('-v', '--version', dest='version', help='The fix version')
     parser.add_option('-x', '--project', dest='project', help='The JIRA project')
     parser.add_option('-y', '--priority', dest='priority', help='The priority of the story')
@@ -184,11 +135,9 @@ if (__name__ == '__main__'):
     manager = IssueManager(options)
 
     #create the issue and implement / test tasks
-    issueID, issues = manager.createIssueSet(options)
+    issueID = manager.createEpic(options)
 
-    #link to the requirement / epic
-    manager.linkIssues(issueID, options.requirement, 'Requirement')
-    manager.attachEpic(issueID, options.epic)
+    print '%s\t%s' % (issueID, options.epic)
 
     #kill the connection
     manager.killSession()
