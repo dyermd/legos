@@ -31,7 +31,7 @@ class Compare_VCFs:
 		# a dictionary to keep track of the allele types of the two different files compared..
 		self.change_counts = {'WT_WT':0, 'WT_HET':0, "WT_HOM":0,'HET_WT':0, 'HET_HET':0, "HET_HOM":0, \
 				'HOM_WT':0, 'HOM_HET':0, "HOM_HOM":0,} 
-		self.reassigned_GTs = 0
+		#self.reassigned_GTs = 0
 		
 	# main function
 	def main(self):
@@ -90,7 +90,7 @@ class Compare_VCFs:
 			if line1 != '' and line2 != '': # If the while loop hit the end of the file, then don't do anything here.
 				GT1Info = self.getGTInfo(line1, self.WT1_Cutoff, self.HOM1_Cutoff) # Will return a tuple with 1. the GT, 2. alternate allele frequency, 3.the alt depth, and 4. the ref depth
 				GT2Info = self.getGTInfo(line2, self.WT2_Cutoff, self.HOM2_Cutoff) # Will return a tuple with 1. the GT, 2. alternate allele frequency, 3.the alt depth, and 4. the ref depth 
-				GT1Info, GT2Info = self.reAssignGT(GT1Info, GT2Info)
+				#GT1Info, GT2Info = self.reAssignGT(GT1Info, GT2Info)
 				# Write the chr, pos, ref Allele, alt Allele, vcf1 info, vcf2 info.
 				self.outCSV.write('\t'.join([line1arr[0], line1arr[1], line1arr[3], line1arr[4], GT1Info[0], GT1Info[1], GT1Info[2], GT1Info[3], GT2Info[0], GT2Info[1], GT2Info[2], GT2Info[3]]) + '\n')
 				GT1_GT2 = GT1Info[0] + "_" +  GT2Info[0]
@@ -130,7 +130,7 @@ class Compare_VCFs:
 			self.change_counts['error_rate'] = 0
 		self.change_counts['total_eligible_bases'] = self.total_eligible_bases
 		self.change_counts['perc_avail_bases'] = self.total_eligible_bases / self.total_possible_bases
-		self.change_counts['reassigned_GTs'] = self.reassigned_GTs
+		#self.change_counts['reassigned_GTs'] = self.reassigned_GTs
 		
 		if not os.path.isfile(options.json_out):
 			# If the QC json file doesn't exist yet, then make it.
@@ -215,6 +215,7 @@ class Compare_VCFs:
 				pass
 		return [GT, str(alt_freq)[0:5], alt_depth, ref_depth] # returns the GT, and first three decimal points of the alt frequencies, and the alt and ref depth.
 
+	# a beter solution than this is required.
 	# Ozlem made this update originally in another file named reAssignGT.py. I brought that scripts functionality as a function here.
 	def reAssignGT(self, GT1Info, GT2Info):
 	   # check to see how close normal AF is to the GT thresholds
