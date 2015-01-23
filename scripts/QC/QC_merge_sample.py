@@ -320,9 +320,15 @@ class QC_Sample:
 	
 		# run1 vs run2:
 		run1vsrun2 = '%svs%s'%(run1_json['run_name'], run2_json['run_name'])
+
+		if 'chromosomes_to_analyze'+merged not in self.sample_json['analysis']['settings']:
+			if self.sample_json['project'] == 'PNET':
+				self.sample_json['analysis']['settings']['chromosomes_to_analyze'+merged] = ['all']
+			else:
+				self.sample_json['analysis']['settings']['chromosomes_to_analyze'+merged] = self.sample_json['analysis']['settings']['chromosomes_to_analyze']
 		
 		# IDEA: If the 'all' comparison has already been made, then pull the chr combination out of it.
-		# IDEA: Only QC the runs that pass the single run QC metrics.
+		# Only the runs that pass the single run QC metrics will be QC'd together.
 		# QC these two runs for every chr type that is listed in chromosomes to analyze.
 		for chromosome in self.sample_json['analysis']['settings']['chromosomes_to_analyze'+merged]:
 			# now set the output_dir
