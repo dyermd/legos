@@ -72,7 +72,7 @@ done
 if [ "$OPTION" == "REMOVE_DUP_FLAGS" ]; then
 	RUNNING="$RUNNING --remove_dup"
 fi
-echo "$RUNNING"
+echo "	$RUNNING"
 
 # Now check the files to see if the bam file exists.
 if [ "$BAM_FILE" == '' ]; then
@@ -94,7 +94,7 @@ flagstat=`samtools view -f 0x0400 $BAM_FILE | wc -l`
 if [ "$OPTION" == "REMOVE_DUP_FLAGS" ]; then
 	# Check to see if there are duplicate flags in this bam file. If there are, then remove them.
 	if [ $flagstat -ne 0 ]; then
-		echo "$BAM_FILE Removing duplicate flags at: `date`."
+		echo "	$BAM_FILE Removing duplicate flags at: `date`."
 		bam_file_name=`basename $BAM_FILE`
 		bam_dir=`dirname $BAM_FILE`
 		# Run picard tools to remove the flags
@@ -107,13 +107,13 @@ if [ "$OPTION" == "REMOVE_DUP_FLAGS" ]; then
 
 		MODIFIED_BAM="${bam_dir}/NoFlags_${bam_file_name}"
 	else
-		echo "$BAM_FILE has no duplicate flags."
+		echo "	$BAM_FILE has no duplicate flags."
 	fi
 elif [ "$OPTION" == "FLAG_DUPS" ]; then
 	if [ $flagstat -eq 0 ]; then
 		bam_file_name=`basename $BAM_FILE`
 		bam_dir=`dirname $BAM_FILE`
-		echo "$BAM_FILE Marking Duplicates at: `date`"
+		echo "	$BAM_FILE Marking Duplicates at: `date`"
 		# MarkDuplicates marks the reads that are duplicates as duplicates in the bam file.
 		# METRICS_FILE is the file to write duplication metrics to. It is required, but we can delete it after
 		java -jar ${PICARD_DIR}/MarkDuplicates.jar \
@@ -123,7 +123,7 @@ elif [ "$OPTION" == "FLAG_DUPS" ]; then
 
 		MODIFIED_BAM="${bam_dir}/Flag_${bam_file_name}"
 	else
-		echo "$BAM_FILE already has $flagstat duplicate flags."
+		echo "	$BAM_FILE already has $flagstat duplicate flags."
 	fi
 fi
 
@@ -135,5 +135,5 @@ if [ "$CLEANUP" == "True" -a "$MODIFIED_BAM" != "" ]; then
 	mv $MODIFIED_BAM $BAM_FILE
 	rm metrics.txt 2>/dev/null
 fi
-echo "Finished at: `date`"
+echo "	Finished at: `date`"
 

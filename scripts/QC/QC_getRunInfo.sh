@@ -355,7 +355,7 @@ fi
 # parameter for pool dropout to only run on exon or otherwise specified data.
 if [ "$POOL_DROPOUT" == "True" ]; then
 	#run Matt's script to add pool info to the json file 
-	echo "generating median read length info for each pool"
+	echo "	Generating median read length info for each pool"
 	python2.7  ${QC_SCRIPTS}/pool_dropout.py \
 		-c ${OUTPUT_DIR}/reverse_beg_depths \
 		-c ${OUTPUT_DIR}/forward_beg_depths \

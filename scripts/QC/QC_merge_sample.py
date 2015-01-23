@@ -501,8 +501,8 @@ class QC_Sample:
 			if len(passing_bams) == 1:
 				# There is only one run, so don't merge it. Set the "final_%sjson"%pref flag to show what the final run is
 				self.sample_json["final_%sjson"%pref] = run
-			elif 'final_%sjson'%pref in self.sample_json and os.path.isfile(self.sample_json['final_%sjson'%pref]):
-				merged_json_data = json.load(open(self.sample_json['final_%sjson'%pref]))
+			elif 'merged_%sjson'%pref in self.sample_json and os.path.isfile(self.sample_json['merged_%sjson'%pref]):
+				merged_json_data = json.load(open(self.sample_json['merged_%sjson'%pref]))
 				# If the runs used to generate the current merged.bam file dont match the current passing_bams, then merge them. Otherwise don't
 				if merged_json_data['json_type'] == 'merged' and set(passing_bams) != set(merged_json_data['bams_used_to_merge']):
 					# in order to manage space, delete the last merged folder that was created.
@@ -517,7 +517,7 @@ class QC_Sample:
 					merged_dir = "%s/%sMerged_%d"%(self.sample_json['sample_folder'], run_name, self.sample_json['merged_%scount'%pref])
 				else:
 					# Don't merge these runs because they've already been merged.
-					print "%s the '%s' runs have already been merged"%(self.sample_json['sample_name'], run_name)
+					print "%s the runs: '%s' have already been merged"%(self.sample_json['sample_name'], passing_bams)
 			else:
 				# Merge these runs
 				merged_dir = "%s/%sMerged"%(self.sample_json['sample_folder'], run_name)
@@ -552,7 +552,6 @@ class QC_Sample:
 					"run_type": run_type, 
 					"pass_fail_status": "pending", 
 					"project": self.sample_json['project'], 
-					"proton": self.sample_json['proton'],
 					"sample": self.sample_json['sample_name'], 
 					"sample_folder": self.sample_json['sample_folder'],
 					"sample_json": self.sample_json['json_file']
@@ -580,9 +579,10 @@ class QC_Sample:
 				# Add a path to the final merged_json
 				self.sample_json["final_%sjson"%pref] = merger.merged_json
 
+	# make the xlsx file to be copied back to the proton
 	def _make_xlsx(self):
 		xlsx_file = '%s/%s_QC.xlsx'%(self.sample_json['qc_folder'], self.sample_json['sample_name'])
-		# make the xlsx file to be copied back to the proton
+		
 		make_xlsx_command = "python2.7 %s/QC_generateSheets.py "%self.__QCDirectory + \
 			"--project_path %s "%self.sample_json['sample_folder'] + \
 			"--sheet_per_sample " + \
@@ -595,7 +595,16 @@ class QC_Sample:
 		else:
 			# TODO it would be really really cool if I could send them an email with the xlsx file!!
 			# I tried this but the server was unable to send the file... $ mail -s "hello" "jlaw@childhooddiseases.org"
-			copy_command = "scp %s ionadmin@%s:%s "%(xlsx_file, self.sample_json['ip_address']
+			# I will copy the .xlsx file to every run of the sample
+			for run in self.sample_json['runs']:
+				run_json = json.load(open(run))
+				if 'ip_address' in run_json and 'orig_filepath_plugin_dir' in run_json:
+					copy_command = "scp %s ionadmin@%s:%s "%(xlsx_file, run_json['ip_address'], run_json['orig_filepath_plugin_dir'])
+					status = self.runCommandLine(copy_command)
+					if status == 0:
+						print "Copied the QC.xlsx file back to %s successfully!  %s"%(run_json['proton'], copy_command)
+					else:
+						print "Failed to copy the QC.xlsx file back to %s...  %s"%(run_json['proton'], copy_command)
 
 
 if __name__ == '__main__':
