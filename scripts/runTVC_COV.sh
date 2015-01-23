@@ -52,7 +52,7 @@ if [ $# -lt 3 ]; then
 	usage
 fi
 
-RUNNING="Starting using these options: "
+RUNNING="Starting runTVC_Cov.sh with these options: "
 counter=0
 while :
 do
@@ -146,13 +146,17 @@ do
 done
 
 # RUNNING is a variable containing all of the options specified
-echo "$RUNNING"
+echo "$RUNNING at `date`"
 
 # Now check the files to see if the bam file exists.
 if [ "$BAM_FILE" == '' ]; then
 	echo "ERROR: MUST SPECIFY A BAM FILE" 1>&2
 #	usage
 	exit 4
+fi
+if [ ! "`find $BAM_FILE -maxdepth 0 2>/dev/null`" ]; then
+	echo "ERROR -- '${BAM_FILE}' not found or not readable" 1>&2
+	exit 8
 fi
 # If no output dir is specified, default will be the bam file's directory
 if [ "$OUTPUT_DIR" == '' ]; then
@@ -190,12 +194,12 @@ function checkFlags {
 function checkBamIndex {
 	# If the bam file needs to be indexed, index the bam file
 	if [ ! "`find ${1}.bai -maxdepth 0 2>/dev/null`" ]; then
-		echo "Indexing $BAM_FILE at `date`"
+		echo "	Indexing $BAM_FILE at `date`"
 		java -jar ${PICARD_TOOLS_DIR}/BuildBamIndex.jar INPUT=${1} OUTPUT=${1}.bai >>$2 2>&1 
 
 		# If for some reason the bam file couldn't be indexed, then quit. The indexed bam file is needed to Cov and TVC
 		if [ $? -ne 0 ]; then
-			echo "First index failed... sorting and retrying with samtools: $BAM_FILE at `date`"
+			echo "	First index failed... sorting and retrying with samtools: $BAM_FILE at `date`"
 			bam_dir=`dirname $1`
 			samtools sort $1 ${bam_dir}/sorted
 			mv ${bam_dir}/sorted.bam $1
@@ -213,7 +217,7 @@ function runCov {
 	mkdir -p ${OUTPUT_DIR}/cov_full 2>/dev/null
 	checkBamIndex $BAM_FILE ${OUTPUT_DIR}/cov_full/log.out
 
-	echo "$BAM_FILE beginning Coverage Analysis at: `date`"
+	echo "	$BAM_FILE beginning Coverage Analysis at: `date`"
 	
 	# -a is for Ampliseq.  -g option gives the gene name and GC content  -D specifies the output directory, -d is for bam files with flagged duplicates
 	# Ozlem had to modify the run_coverage_analysis.sh to include the 30x coverage. She modified the targetReadStats.pl which is being called by run_cv_analysis.sh
@@ -226,13 +230,13 @@ function runCov {
 	fi
 	run_cov="""$run_cov -D "${OUTPUT_DIR}/cov_full" -A "${MERGED_BED}" -B "${UNMERGED_BED}" "$REF_FASTA" "$BAM_FILE"""" 	
 
-	echo "running coverage analysis with these options: $run_cov at `date`" >> ${OUTPUT_DIR}/cov_full/log.out
+	echo "	running coverage analysis with these options: $run_cov at `date`" >> ${OUTPUT_DIR}/cov_full/log.out
 	$run_cov >> ${OUTPUT_DIR}/cov_full/log.out 2>&1
 
 	#wait for job to finish. If there is an error in coverage analysis, $? will be 1 and the error message will be displayed 
 	if [ $? -eq 0 ]; then
 		# Coverage analysis was successful. Copy the .amplicon.cov.xls file, and Delete the other temporaray files.
-		echo "$BAM_FILE Coverage analysis finished successfully at: `date`"
+		echo "	$BAM_FILE Coverage analysis finished successfully at: `date`"
 	else
 		NOERRS="False"
 		# Something went wrong with coverage analysis. Not copying the data.
@@ -248,7 +252,7 @@ function runTVC {
 	mkdir -p ${OUTPUT_DIR}/tvc${TVC_VERSION}_out 2>/dev/null
 	checkBamIndex $BAM_FILE ${OUTPUT_DIR}/tvc${TVC_VERSION}_out/log.out
 
-	echo "$BAM_FILE beginning TVC v${TVC_VERSION} at: `date`"
+	echo "	$BAM_FILE beginning TVC v${TVC_VERSION} at: `date`"
 	#now run TVC v4.2. 
 	run_tvc="""${VARIANT_CALLER_DIR}/variant_caller_pipeline.py \
 		--input-bam "$BAM_FILE" \
@@ -273,12 +277,12 @@ function runTVC {
 	fi
 
 	# run tvc and write the std_out to the log file
-	echo "running tvc with these options: $run_tvc at `date`" >> ${OUTPUT_DIR}/tvc${TVC_VERSION}_out/log.out
+	echo "	running tvc with these options: $run_tvc at `date`" >> ${OUTPUT_DIR}/tvc${TVC_VERSION}_out/log.out
 	$run_tvc >> ${OUTPUT_DIR}/tvc${TVC_VERSION}_out/log.out 2>&1
 	
 	if [ $? -eq 0 ]; then
 		#TVC was successful.
-		echo "$BAM_FILE TVC v${TVC_VERSION} finished successfully at: `date`"
+		echo "	$BAM_FILE TVC v${TVC_VERSION} finished successfully at: `date`"
 	else
 		# Something went wrong with TVC. Not copying the data.
 		NOERRS="False"
@@ -303,9 +307,9 @@ if [ "$RUN_COV" == "True" ]; then
 		echo "ERROR: Unmerged Bed: $UNMERGED_BED not found. Not running Coverage Anlysis."
 		NOERRS="False"
 	elif [ "$AMPLISEQ" == "True" -a "`find ${OUTPUT_DIR}/*.amplicon.cov.xls 2>/dev/null`" -a "$FORCED" != "True" ]; then
-		echo "$OUTPUT_DIR already has a .amplicon.cov.xls file. Not running Coverage Analysis. (use --forced to have cov analysis run anyway)"
+		echo "	$OUTPUT_DIR already has a .amplicon.cov.xls file. Not running Coverage Analysis. (use --forced to have cov analysis run anyway)"
 	elif [ "$TARGETSEQ" == "True" -a "`find ${OUTPUT_DIR}/*.target.cov.xls 2>/dev/null`" -a "$FORCED" != "True" ]; then
-		echo "$OUTPUT_DIR already has a .target.cov.xls file. Not running Coverage Analysis. (use --forced to have cov analysis run anyway)"
+		echo "	$OUTPUT_DIR already has a .target.cov.xls file. Not running Coverage Analysis. (use --forced to have cov analysis run anyway)"
 	else
 
 		# Only check the flags if TVC or Cov has not yet been run
@@ -328,7 +332,7 @@ if [ "$RUN_TVC" == "True" ]; then
 		echo "ERROR: TVC Hotspot: $TVC_HOTSPOT not found. Not running TVC."
 		NOERRS="False"
 	elif [ "`find ${OUTPUT_DIR}/${TVC_VERSION}*.vcf 2>/dev/null`" -a "$FORCED" != "True" ]; then
-		echo "$OUTPUT_DIR already has a .vcf file. Not runnning TVC. (use --forced to have tvc run anyway)"
+		echo "	$OUTPUT_DIR already has a .vcf file. Not runnning TVC. (use --forced to have tvc run anyway)"
 	else
 		# Only check the flags if TVC or Cov has not yet been run
 		checkFlags 

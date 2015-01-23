@@ -78,19 +78,26 @@ def getAllRunInfo(run_files):
 		jsonData = json.load(open(jsonFile))
 		# load this runs data into the master dictionary.
 		# The dictionary is organized by sample, then by name, then by run data
-		if 'sample' not in jsonData:
-			print "%s is being skipped. No 'sample' key found"%jsonFile
-		else:
+		if 'sample' in jsonData:
+		#	print "%s is being skipped. No 'sample' key found"%jsonFile
+		#else:
 			if jsonData['sample'] not in all_run_data:
 				all_run_data[jsonData['sample']] = {'runs': {}}
 			# the dictionary inside of run_data should hold all of this runs QC metrics such as % polyclonality and such
-			if 'run_data' not in jsonData:
+			# if this json file is not a run json, then don't load it.
+			if 'json_type' in jsonData and jsonData['json_type'] != 'run':
+				pass
+			elif 'run_data' not in jsonData:
 				print "%s has no run_data"%jsonFile
 			else:
-				all_run_data[jsonData['sample']]['runs'][jsonData['name']] = jsonData['run_data']
-				if 'sample' not in all_run_data[jsonData['sample']]['runs'][jsonData['name']]:
-					all_run_data[jsonData['sample']]['runs'][jsonData['name']]['sample'] = jsonData['sample']
-					all_run_data[jsonData['sample']]['runs'][jsonData['name']]['run_num'] = jsonData['name']
+				print "	%s run data is being loaded."%jsonFile
+				name = 'name'
+				if 'name' not in jsonData:
+					name = 'run_name'
+				all_run_data[jsonData['sample']]['runs'][jsonData[name]] = jsonData['run_data']
+				if 'sample' not in all_run_data[jsonData['sample']]['runs'][jsonData[name]]:
+					all_run_data[jsonData['sample']]['runs'][jsonData[name]]['sample'] = jsonData['sample']
+					all_run_data[jsonData['sample']]['runs'][jsonData[name]]['run_num'] = jsonData[name]
 #		except KeyError:
 #			print jsonFile, jsonData
 #			sys.exit(8)

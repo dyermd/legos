@@ -143,25 +143,37 @@ class Compare_VCFs:
 		if 'QC_comparisons' not in json_out:
 			json_out['QC_comparisons'] = {} # a dictionary containing each QC_comparison
 		
+		comp_type = self.change_counts['run1_type'] + "_" + self.change_counts['run2_type']
 		# if this is a cds specific comparison, append that to the key
 		if options.chr and options.chr != "all":
-			self.change_counts['chr'] = True
+			#self.change_counts['chr'] = options.chr
+			# check to add the chr dictionary
+			if options.chr not in json_out['QC_comparisons']:
+				json_out['QC_comparisons'][options.chr] = {}
+			if comp_type not in json_out['QC_comparisons'][options.chr]:
+				json_out['QC_comparisons'][options.chr][comp_type] = {}
 			if 'name' in json1:
-				json_out['QC_comparisons']['%s:%svs%s'%(options.chr, json1['name'], json2['name'])] = self.change_counts
+				json_out['QC_comparisons'][options.chr][comp_type]['%svs%s'%(json1['name'], json2['name'])] = self.change_counts
 			else:
 				# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
-				json_out['QC_comparisons']['%s:%svs%s'%(options.chr, json1['run_name'], json2['run_name'])] = self.change_counts
+				json_out['QC_comparisons'][options.chr][comp_type]['%svs%s'%(json1['run_name'], json2['run_name'])] = self.change_counts
 		# if this is a cds specific comparison, append that to the key
-		elif options.cds:
-			self.change_counts['CDS'] = True
-			# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
-			json_out['QC_comparisons']['CDS:' + json1['name'] + 'vs' + json2['name']] = self.change_counts
+		# This option is out of date. Don't use it.
+		#elif options.cds:
+		#	self.change_counts['CDS'] = True
+		#	# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
+		#	json_out['QC_comparisons']['CDS:' + json1['name'] + 'vs' + json2['name']] = self.change_counts
 		else:
+			# check to add the chr dictionary
+			if 'all' not in json_out['QC_comparisons']:
+				json_out['QC_comparisons']['all'] = {}
+			if comp_type not in json_out['QC_comparisons']['all']:
+				json_out['QC_comparisons']['all'][comp_type] = {}
 			if 'name' in json1:
-				json_out['QC_comparisons'][json1['name'] + 'vs' + json2['name']] = self.change_counts
+				json_out['QC_comparisons']['all'][comp_type][json1['name'] + 'vs' + json2['name']] = self.change_counts
 			else:
 				# the key will be Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
-				json_out['QC_comparisons'][json1['run_name'] + 'vs' + json2['run_name']] = self.change_counts
+				json_out['QC_comparisons']['all'][comp_type][json1['run_name'] + 'vs' + json2['run_name']] = self.change_counts
 		
 		# dump the json out file
 		with open(options.json_out, 'w') as newJSONFile:

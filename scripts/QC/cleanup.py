@@ -7,9 +7,10 @@ import sys
 import re
 import json
 import glob
+import shutil
 
 class Cleanup:
-	def __init__(self, sample_json):
+	def __init__(self):
 		pass
 	
 
@@ -23,25 +24,33 @@ class Cleanup:
 
 
 	# @param runs loop through and cleanup each run.
-	def cleanup_runs(self, runs):
-		for run in runs:
-			self.cleanup_run(run)
+	def cleanup_runs(self, runs, cleanup_flag=True, no_errors=True):
+		if cleanup_flag == True and no_errors == True:
+			for run in runs:
+				self.cleanup_run(run)
 
 
 	# Cleanup the PTRIM and assorted files generated.
 	def cleanup_run(self, run):
-		run_json = json.load(open(run))
-		# Remove the PTRIM.bam and PTRIM.bam.bai
-		ptrims = glob.glob("%s/PTRIM*.bam*"%run_json['output_folder'])
-		for ptrim in ptrims:
-			os.remove(ptrim)
-	
-		# Remove any individual chromosomes subset bam files.
-		chr_dirs = glob.glob("%s/chr*"%run_json['output_folder'])
-		for chr_dir in chr_dirs:
-			shutil.rmtree(chr_dir)
-		# Remove anything else that should be removed.
-		# can't think of anything else yet.
+		try:
+			run_json = json.load(open(run))
+			# Remove the PTRIM.bam and PTRIM.bam.bai
+			ptrims = glob.glob("%s/PTRIM*.bam*"%run_json['run_folder'])
+			for ptrim in ptrims:
+				os.remove(ptrim)
+		
+			# Remove any individual chromosomes subset bam files.
+			chr_dirs = glob.glob("%s/chr*"%run_json['run_folder'])
+			for chr_dir in chr_dirs:
+				shutil.rmtree(chr_dir)
+			# Remove the temporary files used in making the QC tables
+			temp_dirs = glob.glob("%s/QC/*%s*/temp_files"%(run_json['sample_folder'], run_json['run_name']))
+			for temp_dir in temp_dirs:
+				shutil.rmtree(temp_dir)
+			# Remove anything else that should be removed.
+			# can't think of anything else yet.
+		except KeyError, ValueError:
+			pass
 
 
 if __name__ == '__main__':

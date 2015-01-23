@@ -14,7 +14,7 @@ class Align_Stats:
 	
 	def runCommandLine(self, systemCall):
 		#run the call and return the status
-		print 'Starting %s' % (systemCall)
+		print '	Starting %s' % (systemCall)
 		status = os.system(systemCall)
 		return(status)
 
@@ -51,8 +51,8 @@ class Align_Stats:
 		# run the command and check the output status
 		status = self.runCommandLine(command)
 		if status == 0:
-			print "Gathering medain read length from %s "%align_file
-			med = self.getMedianFromAlignFile(options.input)
+			print "	Successfully gathered 'medain_read_length' from %s "%align_file
+			med = self.getMedianFromAlignFile(align_file)
 			if self.debug:
 				print "Not removing %s"%align_file
 			else:
@@ -88,7 +88,7 @@ if __name__ == '__main__':
 	if re.search(".bam", options.input):
 		med = Align_Stats.calcMedianFromBam(options.input)
 	elif re.search(".alignment", options.input):
-		print "Gathering medain read length from %s "%options.input
+		print "	Gathering medain read length from %s "%options.input
 		med = Align_Stats.getMedianFromAlignFile(options.input)
 
 	if options.json:
@@ -100,5 +100,5 @@ if __name__ == '__main__':
 		with open(options.json, 'w') as newJobFile:
 			json.dump(jsonData, newJobFile, sort_keys=True, indent=4)
 
-	print "median read length: %d" %med
+	print "	median read length: %d" %med
 

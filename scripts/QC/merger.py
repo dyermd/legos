@@ -49,14 +49,14 @@ class Merger:
 			#sys.exit(4)
 			
 		# Now set the output file, and then run the merge command
-		merge_command +=  "	OUTPUT=%s/merged_badHeader.bam "%self.ouput_dir
+		merge_command +=  "	OUTPUT=%s/merged_badHeader.bam "%self.output_dir
 	
 		if self.runCommandLine(merge_command) != 0:
-			print "ERROR: $SAMPLE_DIR something went wrong with merging!"
+			print "ERROR: %s something went wrong with merging!"%self.sample_name
 			sys.exit(1)
 	
 		#echo "fixing header for %s/merged_badHeader.bam"
-		correct_header_command = "samtools view -H %s/merged_badHeader.bam > %s/merged.header.sam "%(self.output_dir, self.ouptut_dir)
+		correct_header_command = "samtools view -H %s/merged_badHeader.bam > %s/merged.header.sam "%(self.output_dir, self.output_dir)
 		if self.runCommandLine(correct_header_command) != 0:
 			print "ERROR: samtools view -H failed!"
 			sys.exit(1)
@@ -64,16 +64,16 @@ class Merger:
 		# NEED TO TEST THIS COMMAND. Is there anything that comes before the next : that is important?
 		# Change the SM: tag so that it matches for every run merged. (There should be one SM tag for each run merged)
 		# This was the old command
-		#sed_command = 'sed "s/SM:[a-zA-Z0-9_&/-]*/SM:%s/" %s/merged.header.sam > %s/merged.headerCorrected.sam'%(self.sample_name, self.output_dir, self.ouptut_dir)
+		#sed_command = 'sed "s/SM:[a-zA-Z0-9_&/-]*/SM:%s/" %s/merged.header.sam > %s/merged.headerCorrected.sam'%(self.sample_name, self.output_dir, self.output_dir)
 		# this updated command will change the SM tag to match everything up to the next : after the SM tag.
-		sed_command = 'sed -E "s/SM:[^:]*:/SM:%s:/" %s/merged.header.sam > %s/merged.headerCorrected.sam'%(self.sample_name, self.output_dir, self.ouptut_dir)
+		sed_command = 'sed -E "s/SM:[^:]*:/SM:%s:/" %s/merged.header.sam > %s/merged.headerCorrected.sam'%(self.sample_name, self.output_dir, self.output_dir)
 		if self.runCommandLine(sed_command) != 0:
 			print "ERROR: sed command failed!"
 			sys.exit(1)
 	
 		# write the new header to merged.bam
-		reheader_command = "samtools reheader %s/merged.headerCorrected.sam %s/merged_badHeader.bam > %s/merged.bam "%(self.output_dir, self.output_dir, self.ouptut_dir)
-		if self.runCommandLine(sed_command) != 0:
+		reheader_command = "samtools reheader %s/merged.headerCorrected.sam %s/merged_badHeader.bam > %s/merged.bam "%(self.output_dir, self.output_dir, self.output_dir)
+		if self.runCommandLine(reheader_command) != 0:
 			print "ERROR: sed command failed!"
 			sys.exit(1)
 
@@ -81,11 +81,16 @@ class Merger:
 		self.path_to_merged_bam = "%s/merged.bam"%self.output_dir
 		self.merged_json = "%s/merged.json"%self.output_dir
 
+		# if there is already an index file from a previous merge try, delete it.
+		if os.path.isfile(self.path_to_merged_bam + ".bai"):
+			os.remove(self.path_to_merged_bam + ".bai")
+
 		# IF specified, cleanup the temporary files
-		if self.cleanup:
-			os.remove("%s/merged_badHeader.bam"%self.output_dir)
-			os.remove("%s/merged.headerCorrected.sam"%self.output_dir)
-			os.remove("%s/merged.header.sam"%self.output_dir)
+		#if self.cleanup:
+		# Need to cleanup here inorder for TVC to work.
+		os.remove("%s/merged_badHeader.bam"%self.output_dir)
+		os.remove("%s/merged.headerCorrected.sam"%self.output_dir)
+		os.remove("%s/merged.header.sam"%self.output_dir)
 	
 		print "%s finished merging "%self.output_dir
 

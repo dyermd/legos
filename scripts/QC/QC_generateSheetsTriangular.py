@@ -374,28 +374,31 @@ def write3x3Tables(QC_comparisons):
                     #print table_values
                 
             for runs_compared in sorted(QC_comparisons[sample]):
-                #print runs_compared
-                part1,part2=runs_compared.split("vs")
-                part12=part1.split("-")
-                part22=part2.split("-")
-                    #print part12[0],part12[1]
-                    #print part22[0],part22[1]
-    
-                if str(part12[0]) == "N" and str(part22[0]) == "N":
-                    #print "N-N"
-                    count_normal=count_normal+1
-                    if part22[1]>max_normal_run:
-                        max_normal_run=part22[1]
-            
-                elif str(part12[0]) == "T" and str(part22[0]) == "T":
-                    #print "T-T"
-                    count_tumor=count_tumor+1
-                    if part22[1]>max_tumor_run:
-                        max_tumor_run=part22[1]
-                        
-                else:
-                    #print "N-T"
-                    count_tumor_normal=count_tumor_normal+1
+				try:
+					#print runs_compared
+					part1,part2=runs_compared.split("vs")
+					part12=part1.split("-")
+					part22=part2.split("-")
+						#print part12[0],part12[1]
+						#print part22[0],part22[1]
+		
+					if str(part12[0]) == "N" and str(part22[0]) == "N":
+						#print "N-N"
+						count_normal=count_normal+1
+						if part22[1]>max_normal_run:
+							max_normal_run=part22[1]
+				
+					elif str(part12[0]) == "T" and str(part22[0]) == "T":
+						#print "T-T"
+						count_tumor=count_tumor+1
+						if part22[1]>max_tumor_run:
+							max_tumor_run=part22[1]
+							
+					else:
+						#print "N-T"
+						count_tumor_normal=count_tumor_normal+1
+				except ValueError:
+					print "sample: %s no go"%sample
                 
 
 #print count_normal
@@ -405,10 +408,14 @@ def write3x3Tables(QC_comparisons):
 #           print max_normal_run
     
             for runs_compared, table_values in sorted(QC_comparisons[sample].iteritems()):
-                part1,part2=runs_compared.split("vs")
-                part12=part1.split("-")
-                part22=part2.split("-")
-
+                try:
+                    part1,part2=runs_compared.split("vs")
+                    part12=part1.split("-")
+                    part22=part2.split("-")
+                except ValueError:
+                    print "sample: %s no go"%sample
+                    continue
+	
                 if str(part12[0]) == "N" and str(part22[0]) == "N":
                     #print "N-N"
                     #row=row+(int(part12[1])-1)*9

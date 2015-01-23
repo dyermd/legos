@@ -132,6 +132,7 @@ metrics = dict(zip(options.metrics.split(';')[0].split(':'), options.metrics.spl
 try:
 	metrics['begin_amp_cov'] = float(metrics['begin_amp_cov']) / float(metrics['num_amps'])
 	metrics['end_amp_cov'] = float(metrics['end_amp_cov']) / float(metrics['num_amps'])
+	metrics['amp_cov'] = float(metrics['amp_cov']) / float(metrics['num_amps'])
 except ValueError:
 	pass
 

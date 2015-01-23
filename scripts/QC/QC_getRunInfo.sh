@@ -285,6 +285,9 @@ begin_amp_cov=$(( (forward_begbpCov + reverse_endbpCov) / 2 ))
 end_amp_cov=$(( (forward_endbpCov + reverse_begbpCov) / 2 ))
 #echo "$end_amp_cov"
 
+# Remove the header, and then pipe that into awk to get the amplicons with only > 30x coverage.
+amp_cov=`tail -n +2 $AMP | awk -v cutoff=$AMP_COV_CUTOFF '{ if ($10 >= cutoff) printf "."}' | wc -c` 
+
 # filter the VCF file to then get the TS_TV ratio
 python ${QC_SCRIPTS}/QC_Filter.py $VCF ${OUTPUT_DIR}/filtered.vcf --single $DEPTH_CUTOFF >>$log
 TS_TV=`cat ${OUTPUT_DIR}/filtered.vcf | vcf-tstv | grep -Po "\d+\.\d+"`
@@ -296,10 +299,10 @@ if [ "$CDS" != "" ]; then
 	# If GATK ran successfully, then get the total number of bases covered at $DEPTH_CUTOFF
 	CDSCov=`awk -v cutoff=$AMP_COV_CUTOFF '{ if($3 >= cutoff) printf "."}' ${OUTPUT_DIR}/CDS_depths | wc -c`
 	# These QC metrics will be added to the json file of the run.
-	metrics="cds_cov:num_amps:begin_amp_cov:end_amp_cov:ts_tv:median_coverage_overall;$CDSCov:$num_amps:$begin_amp_cov:$end_amp_cov:$TS_TV:$medainReadCoverageOverall" 
+	metrics="cds_cov:num_amps:amp_cov:begin_amp_cov:end_amp_cov:ts_tv:median_coverage_overall;$CDSCov:$num_amps:${amp_cov}:$begin_amp_cov:$end_amp_cov:$TS_TV:$medainReadCoverageOverall" 
 else
 	# These QC metrics will be added to the json file of the run.
-	metrics="num_amps:begin_amp_cov:end_amp_cov:ts_tv:median_coverage_overall;$num_amps:$begin_amp_cov:$end_amp_cov:$TS_TV:$medainReadCoverageOverall" 
+	metrics="num_amps:amp_cov:begin_amp_cov:end_amp_cov:ts_tv:median_coverage_overall;$num_amps:${amp_cov}:$begin_amp_cov:$end_amp_cov:$TS_TV:$medainReadCoverageOverall" 
 fi
 
 # Find this run's .json file, or add another one

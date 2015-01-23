@@ -24,11 +24,12 @@ class XLSX_Writer():
 		# this dictionary will hold all of the self.formats to be used by QC_genSheets
 		self.formats = {'': ''}
 		self.workbook = workbook
-		self.__setupWorkbook()
+		self._setupWorkbook()
+
 
 	# @param out_file_name the name of the outuput xlsx
 	##### @returns a format of dictionary
-	def __setupWorkbook(self):
+	def _setupWorkbook(self):
 		# The color for each alternating sample
 		alt_sample_color = "#d5e8f8" # This color is considered azure by the color wheel. Go to this website to choose a new color
 		
@@ -85,7 +86,7 @@ class XLSX_Writer():
 	#	return self.formats
 		
 	# Function to check if a value is greater than the maximum value (i.e. WT to HET is greater than 10 or something), then write it in red
-	def __check_max_and_write(self, row, col, value, Max):
+	def _check_max_and_write(self, row, col, value, Max):
 		if int(value) > int(Max):
 			# write this cell in red
 			self.MRsheet.write(row, col, value, self.formats['red'])
@@ -99,7 +100,7 @@ class XLSX_Writer():
 	# @param Max will be the maximum threshold for writing in red, unless it's 0. If max if negative, it will be treated as a minimum threshold
 	# MAx is not yet implemented.
 	# @return returns 1 so there will be one less line of code (to incrament col). Maybe it could just incrament col, I would just rather not have global variables
-	def __check_to_write(self, row, col, key, write_format, metrics):
+	def _check_to_write(self, row, col, key, write_format, metrics):
 		if key in metrics:
 			try:
 				if re.search("=", write_format):
@@ -126,7 +127,9 @@ class XLSX_Writer():
 				self.QCsheet.write(row, col, metrics[key], self.formats[write_format])
 		return 1
 
-	def __writeRunMetricHeaders(self):
+
+	# @param ex_json_data if it is None, then it will return 'false' in an if statement
+	def _writeRunMetricHeaders(self, ex_json_data=None):
 		# QCsheet is where all of the metrics about each run will be written
 		self.QCsheet = self.workbook.add_worksheet("QC Metrics")
 		self.QCsheet.freeze_panes(1,2)
@@ -137,28 +140,28 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "Sample #", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
-	#	self.QCsheet.write(0,col, "Plate, row and column", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,10, self.formats['center'])
-	#	col += 1
 		self.QCsheet.write(0,col, "Library prep date", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,10, self.formats['center'])
 		col += 1
-		#self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
-		#self.QCsheet.set_column(col,col,12, self.formats['center'])
-		#col += 1
+		self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,12, self.formats['center'])
+		col += 1
 		self.QCsheet.write(0,col, "Library concentration (ng/ul)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "Run #", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,5, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "Rot ID", self.formats['header_format'])
+		self.QCsheet.write(0,col, "Run ID", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "Run Date", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "Total M Basepairs", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,12, self.formats['center'])
+		col += 1
+		self.QCsheet.write(0,col, "% Amplicons > 30x coverage", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "% Polyclonal", self.formats['header_format'])
@@ -170,16 +173,20 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "Median Read Length", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "% expected read length (out of XXX bp)", self.formats['header_format'])
+		# see if we have the exp_read_length
+		if ex_json_data and 'exp_read_length' in ex_json_data['analysis']['settings']:
+			self.QCsheet.write(0,col, "% expected read length (out of %d bp)"%ex_json_data['analysis']['settings']['exp_read_length'], self.formats['header_format'])
+		else:
+			self.QCsheet.write(0,col, "% expected read length (out of XXX bp)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp +10", self.formats['header_format'])
+		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp +10 (considering fwd/rev read split)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp -10", self.formats['header_format'])
+		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp -10 (considering fwd/rev read split)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "(%covered at bp(10) - bp(n-10))/bp(10)", self.formats['header_format'])
+		self.QCsheet.write(0,col, "ABS (%covered at bp(10) - bp(n-10))/bp(10)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
 		col += 1
 	#	self.QCsheet.write(0,col, "total number of bases covered at 30x (the # of bases covered in the 'covered_bases region' region.)", self.formats['header_format'])
@@ -191,8 +198,25 @@ class XLSX_Writer():
 	#	self.QCsheet.write(0,col, "% targeted bases (n/84447)", self.formats['header_format'])
 	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
 	#	col += 1
+		# check to see if the 'pool_dropout' metrics are available for this spreadsheet
+		if not ex_json_data or ('pool_dropout' in ex_json_data['analysis']['settings'] and ex_json_data['analysis']['settings']['pool_dropout'] == True):
+			self.QCsheet.write(0,col, "# of pools <10% median coverage", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+			self.QCsheet.write(0,col, "# of pools between 10%-50% median coverage ", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+			self.QCsheet.write(0,col, "# of pools between 50%-75% median coverage", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+			self.QCsheet.write(0,col, "# of pools passed", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+			self.QCsheet.write(0,col, "total # of pools", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
 		self.QCsheet.write(0,col, "Ts/Tv", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
+		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "# Total variants (single allele)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
@@ -206,24 +230,24 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "HET/HOM ratio (single allele rates)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "3x3 N-N pair (whole amplicon)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Total bases evaluated (>=30x in both runs) (whole amplicon)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "% Available Bases (whole amplicon)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "3x3 qc observed error counts  (whole amplicon)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "3x3 qc error rate  (whole amplicon)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Z-Score error rate (whole amplicon)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
+#		self.QCsheet.write(0,col, "3x3 N-N pair (whole amplicon)", self.formats['header_format'])
+#		self.QCsheet.set_column(col,col,13, self.formats['center'])
+#		col += 1
+#		self.QCsheet.write(0,col, "Total bases evaluated (>=30x in both runs) (whole amplicon)", self.formats['header_format'])
+#		self.QCsheet.set_column(col,col,13, self.formats['center'])
+#		col += 1
+#		self.QCsheet.write(0,col, "% Available Bases (whole amplicon)", self.formats['header_format'])
+#		self.QCsheet.set_column(col,col,13, self.formats['center'])
+#		col += 1
+#		self.QCsheet.write(0,col, "3x3 qc observed error counts  (whole amplicon)", self.formats['header_format'])
+#		self.QCsheet.set_column(col,col,13, self.formats['center'])
+#		col += 1
+#		self.QCsheet.write(0,col, "3x3 qc error rate  (whole amplicon)", self.formats['header_format'])
+#		self.QCsheet.set_column(col,col,13, self.formats['center'])
+#		col += 1
+#		self.QCsheet.write(0,col, "Z-Score error rate (whole amplicon)", self.formats['header_format'])
+#		self.QCsheet.set_column(col,col,13, self.formats['center'])
+#		col += 1
 	#	self.QCsheet.write(0,col, "Total bases evaluated (>=30x in both runs) (cds only)", self.formats['header_format'])
 	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
 	#	col += 1
@@ -239,17 +263,34 @@ class XLSX_Writer():
 	#	self.QCsheet.write(0,col, "Z-Score error rate (cds only)", self.formats['header_format'])
 	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
 	#	col += 1
-		self.QCsheet.write(0,col, "run status (does it pass qc?)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
+		#if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings']:
+		try:
+			# print the actual cutoffs used in the script for the header line
+			self.QCsheet.write(0,col, "Run Status FAIL if (i) %% expected median read length <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['perc_exp_median_read_length']) + \
+					"OR (ii) %% Amplicons covered at +10 and/or n-10th position <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['begin_end_amp_cov']) + \
+					"OR (iii) pools found <50% median coverage", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+			self.QCsheet.write(0,col, "QC status (PASSED RUN status but FAILED with error rate > %.3e in QC table). "%(ex_json_data['analysis']['settings']['cutoffs']['error_rate']) + \
+					"Look at only Normal-Normal or Tumor-Tumor comparison in the case of LOH candidates", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+		except KeyError:
+			self.QCsheet.write(0,col, "run pass/fail status", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
+			self.QCsheet.write(0,col, "3x3 table error rate pass/fail status", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			col += 1
 		self.QCsheet.set_column(col,col+20,12, self.formats['center'])
 		
 		self.QCsheet.set_row(0,100, self.formats['header_format'])
 
+
 	# @param run_metrics the dictionary containing all of the run_metrics
-	def writeRunMetrics(self, run_metrics):
+	def writeRunMetrics(self, run_metrics, ex_json_data=None):
 		# first write the headers
-		self.__writeRunMetricHeaders()
+		self._writeRunMetricHeaders(ex_json_data)
 		row = 1
 		azure = '_azure'
 		
@@ -262,79 +303,106 @@ class XLSX_Writer():
 					azure = ""
 			for run, metrics in sorted(run_metrics[sample]['runs'].iteritems()):
 				col = 0
-				#col += self.__check_to_write(row, col, 'sample_num', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'sample', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
-				#col += self.__check_to_write(row, col, 'barcode', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'lib_conc', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'run_num', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'rotID', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'run_date', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'total_bases', "num_format" + azure, metrics)
+				#col += self._check_to_write(row, col, 'sample_num', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'sample', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'barcode', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'run_num', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'run_date', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'total_bases', "num_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'amp_cov', "perc_format" + azure, metrics)
 				# Old naming sheme:
-				#col += self.__check_to_write(row, col, 'polyclonal', "perc_format" + azure, metrics)
-				#col += self.__check_to_write(row, col, 'mean', "num_format" + azure, metrics)
-				#col += self.__check_to_write(row, col, 'median', "num_format" + azure, metrics)
-				col += self.__check_to_write(row, col, 'polyclonality', "perc_format" + azure, metrics)
-				col += self.__check_to_write(row, col, 'mean_read_length', "num_format" + azure, metrics)
-				col += self.__check_to_write(row, col, 'median_read_length', "num_format" + azure, metrics)
-				col += self.__check_to_write(row, col, 'expected_length', "" + azure, metrics)
-				col += self.__check_to_write(row, col, 'begin_amp_cov', 'perc_format' + azure, metrics)
-				col += self.__check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
+				#col += self._check_to_write(row, col, 'polyclonal', "perc_format" + azure, metrics)
+				#col += self._check_to_write(row, col, 'mean', "num_format" + azure, metrics)
+				#col += self._check_to_write(row, col, 'median', "num_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'polyclonality', "perc_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'mean_read_length', "num_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'median_read_length', "num_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'perc_exp_median_read_length', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'begin_amp_cov', 'perc_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
 				# give it the dummy 'end_amp_cov' key to write the function of +-10 bp difference. the = is for a function
-				col += self.__check_to_write(row, col, 'end_amp_cov', "=dec3_format" + azure, metrics)
-	#			col += self.__check_to_write(row, col, 'total_covered', 'num_format' + azure, metrics)
-	#			col += self.__check_to_write(row, col, 'perc_expected', 'perc_format' + azure, metrics)
-	#			col += self.__check_to_write(row, col, 'perc_targeted', 'perc_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'end_amp_cov', "=dec3_format" + azure, metrics)
+	#			col += self._check_to_write(row, col, 'total_covered', 'num_format' + azure, metrics)
+	#			col += self._check_to_write(row, col, 'perc_expected', 'perc_format' + azure, metrics)
+	#			col += self._check_to_write(row, col, 'perc_targeted', 'perc_format' + azure, metrics)
 				# Old naming scheme:
-				#col += self.__check_to_write(row, col, 'tstv', 'num_format' + azure, metrics)
-				col += self.__check_to_write(row, col, 'ts_tv', 'num_format' + azure, metrics)
-				col += self.__check_to_write(row, col, 'total_vars', 'num_format' + azure, metrics)
-				col += self.__check_to_write(row, col, 'num_het', 'num_format' + azure, metrics)
-				col += self.__check_to_write(row, col, 'num_hom', 'num_format' + azure, metrics)
-				col += self.__check_to_write(row, col, 'het_hom', 'dec3_format' + azure, metrics)
+				#col += self._check_to_write(row, col, 'tstv', 'num_format' + azure, metrics)
+				if not ex_json_data or ('pool_dropout' in ex_json_data['analysis']['settings'] and ex_json_data['analysis']['settings']['pool_dropout'] == True):
+					col += self._check_to_write(row, col, 'pools_less_than_10', "num_format" + azure, metrics)
+					col += self._check_to_write(row, col, 'pools_between_10_and_50', "num_format" + azure, metrics)
+					col += self._check_to_write(row, col, 'pools_between_50_and_75', "num_format" + azure, metrics)
+					col += self._check_to_write(row, col, 'pools_pass', "num_format" + azure, metrics)
+					col += self._check_to_write(row, col, 'pools_total', "num_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'ts_tv', 'dec3_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'total_vars', 'num_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'num_het', 'num_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'num_hom', 'num_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'het_hom', 'dec3_format' + azure, metrics)
+				# Now write the pass/fail status
+				if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings']:
+					if 'pass_fail_status' in metrics and metrics['pass_fail_status'] == 'fail':
+						self.QCsheet.write(row, col, metrics['pass_fail_status'].upper(), self.formats['red'])
+						col += 1
+					else:
+						col += self._check_to_write(row, col, 'pass_fail_status', azure, metrics)
+					# if the 3x3 tables ran, then the run status must be 'pass'
+					if 'pass_fail_3x3_status' in metrics and metrics['pass_fail_3x3_status'] == 'fail':
+						self.QCsheet.write(row, col, metrics['pass_fail_3x3_status'].upper(), self.formats['red'])
+						col += 1
+					else:
+						col += self._check_to_write(row, col, 'pass_fail_3x3_status', azure, metrics)
+				else:
+					# if there are no cutoffs, then the script wont know if it passes or fails yet.
+					self.QCsheet.write(row, col, 'pending', self.formats[azure])
+					col += 1
+					self.QCsheet.write(row, col, 'pending', self.formats[azure])
+					col += 1
 				#run_num = int(metrics['run_num'])
 				#runs = int(metrics['runs'])
 		
 				# This was never finished. The idea was to choose a representative 3x3 table and show its summary here, but it never really worked out.
 #				# Now write the N-N pair and the T-T pairs
-#				col += self.__check_to_write(row, col, 'same_pair', "" + azure, metrics)
-#				col += self.__check_to_write(row, col, 'same_total_eligible_bases', 'num_format' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'same_perc_available_bases', 'perc_format' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'same_error_count', 'num_format' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'same_error_rate', 'perc_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'same_pair', "" + azure, metrics)
+#				col += self._check_to_write(row, col, 'same_total_eligible_bases', 'num_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'same_perc_available_bases', 'perc_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'same_error_count', 'num_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'same_error_rate', 'perc_format' + azure, metrics)
 #				try:
 #					if 'same_zscore' in metrics and float(metrics['same_zscore']) > 3:
 #						self.QCsheet.write_number(row, col, float(metrics['same_zscore']), dec3_format_red)
 #						metrics['same_status'] = 'Fail'
 #						col += 1
 #					else:
-#						col += self.__check_to_write(row, col, 'same_zscore', 'dec3_format' + azure, metrics)
+#						col += self._check_to_write(row, col, 'same_zscore', 'dec3_format' + azure, metrics)
 #				except ValueError:
-#					col += self.__check_to_write(row, col, 'tn_zscore', '' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'same_status', "" + azure, metrics)
+#					col += self._check_to_write(row, col, 'tn_zscore', '' + azure, metrics)
+#				col += self._check_to_write(row, col, 'same_status', "" + azure, metrics)
 #		
 #			# Now write the T-N pairs
-#				col += self.__check_to_write(row, col, 'tn_pair', "" + azure, metrics)
-#				col += self.__check_to_write(row, col, 'tn_total_evaluated', 'num_format' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'tn_perc_available_bases', 'perc_format' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'tn_error_count', 'num_format' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'tn_error_rate', 'perc_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'tn_pair', "" + azure, metrics)
+#				col += self._check_to_write(row, col, 'tn_total_evaluated', 'num_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'tn_perc_available_bases', 'perc_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'tn_error_count', 'num_format' + azure, metrics)
+#				col += self._check_to_write(row, col, 'tn_error_rate', 'perc_format' + azure, metrics)
 #				try:
 #					if 'tn_zscore' in metrics and float(metrics['tn_zscore']) > 3:
 #						self.QCsheet.write_number(row, col, float(metrics['tn_zscore']), dec3_format_red)
 #						metrics['tn_status'] = 'Fail'
 #						col += 1
 #					else:
-#						col += self.__check_to_write(row, col, 'tn_zscore', 'dec3_format' + azure, metrics)
+#						col += self._check_to_write(row, col, 'tn_zscore', 'dec3_format' + azure, metrics)
 #				except ValueError:
-#					col += self.__check_to_write(row, col, 'tn_zscore', '' + azure, metrics)
-#				col += self.__check_to_write(row, col, 'tn_status', "" + azure, metrics)
+#					col += self._check_to_write(row, col, 'tn_zscore', '' + azure, metrics)
+#				col += self._check_to_write(row, col, 'tn_status', "" + azure, metrics)
 			
 				# Set the color of this row according to the current color
 				self.QCsheet.set_row(row, None, self.formats[azure])
 	
 				row += 1
+
 
 	# Write the multiple run Info 3x3 tables if specified
 	# @param QC_comparisons the dictionary from all of the _QC.json files
@@ -348,7 +416,7 @@ class XLSX_Writer():
 		col = 1
 		# QC_comparisons was made by QC_stats.py and has all of the needed 3x3 table stats.
 		for sample in sorted(QC_comparisons):
-			print "Writing 3x3 tables for sample: " + sample
+			print "	Writing 3x3 tables for sample: " + sample
 			# if specified, add a new sheet per sample
 			if self.sheet_per_sample:
 				# self.MRsheet is the sheet where all of the 3x3 tables for each of the multiple runs of each sample will be written
@@ -362,22 +430,26 @@ class XLSX_Writer():
 	
 			# iterate through the different data sizes (i.e. all, chr1, 718, etc.)
 			for data_type in sorted(QC_comparisons[sample]):
+				#print 'here with data_type: %s'%data_type
 				# comp_type is is either normal_normal, tumor_normal, or tumor_tumor and contains the specified types of comparisons
 				# row will be updated as the 3x3 tables are written so that row will always be in teh correct place.
+				if "germline_germline" in QC_comparisons[sample][data_type]:
+					#sheet.write(row, col, "%s: Normal vs Normal"%data_type, self.formats['header_format2'])
+					row = self._write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['germline_germline'], row, col)
 				if "normal_normal" in QC_comparisons[sample][data_type]:
 					#sheet.write(row, col, "%s: Normal vs Normal"%data_type, self.formats['header_format2'])
-					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['normal_normal'], row, col)
+					row = self._write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['normal_normal'], row, col)
 				if "tumor_tumor" in QC_comparisons[sample][data_type]:
 					#sheet.write(row, col, "%s: Tumor vs Tumor"%data_type, self.formats['header_format2'])
-					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_tumor'], row, col)
-				if "tumor_normal" in QC_comparisons[sample][data_type]:
+					row = self._write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_tumor'], row, col)
+				if "normal_tumor" in QC_comparisons[sample][data_type]:
 					#sheet.write(row, col, "%s: Normal vs Tumor"%data_type, self.formats['header_format2'])
-					row = self.__write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['tumor_normal'], row, col)
+					row = self._write_comparisons(sheet, data_type, QC_comparisons[sample][data_type]['normal_tumor'], row, col)
 
 					
 	# write the comparisons of a sample. 
 	# Will also handle the row, col increases and such
-	def __write_comparisons(self, sheet, data_type, qc_comparisons, start_row, start_col):
+	def _write_comparisons(self, sheet, data_type, qc_comparisons, start_row, start_col):
 		row2 = start_row
 		highest_row = 0
 		col2 = start_col
@@ -396,11 +468,12 @@ class XLSX_Writer():
 			if row2 > highest_row:
 				highest_row = row2
 			# now write the 3x3 tables on the given sheet for the given data_type and comparison type
-			self.__write3x3Table(sheet, data_type, runs_compared, table_values, row2, col2)
+			self._write3x3Table(sheet, data_type, runs_compared, table_values, row2, col2)
 		return highest_row+11
 
+
 	# function to write a 3x3 table to the given sheet
-	def __write3x3Table(self, sheet, data_type, runs_compared, table_values, row, col):
+	def _write3x3Table(self, sheet, data_type, runs_compared, table_values, row, col):
 		#first make the header for each table.
 		header = "%s: %s    -  vs  -    %s"%(data_type, runs_compared.split('vs')[0], runs_compared.split('vs')[1]) # i.e. sample1  Run1  -  vs  - Run2
 		sheet.write(row, col, header, self.formats['header_format2'])
@@ -463,6 +536,7 @@ if (__name__ == "__main__"):
 	parser.add_option('-q', '--qc_info_only', dest='qc_info_only', action="store_true", default=False, help="Get only the 3x3 table QC comparison info. Default is to get both run info and the 3x3 table qc_comparisons")
 	parser.add_option('-S', '--sheet_per_sample', dest='sheet_per_sample', action="store_true", default=False, help="Will write a new sheet containing the 3x3 table comparisons per sample.")
 	parser.add_option('-o', '--out', dest='out', default='QC.xlsx', help='Specify the output xlsx file [default: %default]')
+	parser.add_option('-j', '--ex_json', dest='ex_json', help='An example sample json file containing analysis settings which we can use for this spreadsheet. (with the -r option)')
 	
 	# Gets all of the command line arguments specified and puts them into the dictionary args
 	(options, args) = parser.parse_args()
@@ -497,10 +571,16 @@ if (__name__ == "__main__"):
 			QC_3x3_json_data = dict(QC_3x3_json_data.items() + QC_stats.main_QC_only(project_path).items())
 
 	if not options.qc_info_only:
-		print "Generating the main run QC run metrics Spreadsheet" 
-		xlsx_writer.writeRunMetrics(runs_json_data)
+		ex_json_data = None
+		if options.ex_json:
+			if not os.path.isfile(options.ex_json):
+				print "%s is not found. Unable to use it as an example"
+			else:
+				ex_json_data = json.load(open(options.ex_json))
+		print "	Generating the main run QC run metrics Spreadsheet" 
+		xlsx_writer.writeRunMetrics(runs_json_data, ex_json_data)
 	if not options.run_info_only:
-		print "Generating the 3x3 QC table Spreadsheets" 
+		print "	Generating the 3x3 QC table Spreadsheets" 
 		xlsx_writer.write3x3Tables(QC_3x3_json_data)
 	
 	print "Finished generating the QC table: " + options.out
