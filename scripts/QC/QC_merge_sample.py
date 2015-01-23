@@ -581,6 +581,8 @@ class QC_Sample:
 	
 			# If the merge_json passes the cutoffs, set it as the final_json
 			merge_json = json.load(open(merger.merged_json))
+			# add the path to this merge even if it doesn't pass
+			self.sample_json["merged_%sjson"%pref] = merger.merged_json
 			if merge_json['pass_fail_status'] == 'pass':
 				# Add a path to the final merged_json
 				self.sample_json["final_%sjson"%pref] = merger.merged_json
