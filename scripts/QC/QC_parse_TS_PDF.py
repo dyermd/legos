@@ -43,6 +43,47 @@ def getDate(line):
 	date = "%s/%s/%s"%(month, day, year)
 	return date
 
+# Function to fix the bases in barcoded cases where teh sample has extra underscores
+# @param line the current line
+# @return the total bases for this barcode
+def fix_bases(line):
+	# example problematic line:
+	#IonXpress 078 PNET BC373 12,511,218,3359,898,389,624 75,920,330 164 bp
+	bases = ''
+	bases_index = 3
+	bases_gathered = False
+	# the sample could have more than one '_' so keep looping until we pass # the sample
+	while not bases_gathered:
+		if bases_index >= len(line):
+			bases = ''
+			break
+		# there shouldn't be cases where the number of bases is < 1,000
+		if len(line[bases_index].split(',')) < 2:
+			bases_index += 1
+		# Giga bases should not have more than 4 commas. 
+		elif len(line[bases_index].split(',')) > 4:
+			problem_index = 0
+			fixed = False
+			while not fixed:
+				if len(line[bases_index].split(',')[problem_index]) > 3:
+					bases = ''.join(line[bases_index].split(',')[:problem_index])
+					# only get the first three digits of the # problem index
+					bases += line[bases_index].split(',')[problem_index][:3]
+					fixed = True
+					bases_gathered = True
+				# heres an extra catch
+				elif len(line[bases_index].split(',')[problem_index]) < 1:
+					bases = ''
+					bases_gathered = True
+					break
+				else:
+					problem_index += 1
+		# else this must be the bases. The numbers might not be jumbled together
+		else:
+			bases = line[bases_index]
+			bases_gathered = True
+	return bases
+
 
 #set up the option parser
 parser = OptionParser()
@@ -136,9 +177,14 @@ if barcoded:
 			while re.search("IonXpress", line):
 				line = line.split(' ')
 				barcode = line[0] + '_' + line[1]
+				mean = line[-2]
 				sample = line[2]
 				bases = line[3]
-				mean = line[-2]
+				# it's not quite this simple... The sample could have an '_'
+				# which would throw off the calculation. Also could have  numbers jumbled together... for example:
+		#IonXpress 078 PNET BC373 12,511,218,3359,898,389,624 75,920,330 164 bp
+				if len(line[3].split(',')) < 2 or len(line[3].split(',')) > 4:
+					bases = fix_bases(line)
 				runs.append('\t'.join([barcode, sample, bases, mean]))
 				line = txtFile.readline()
 				line = txtFile.readline().strip()
@@ -200,17 +246,22 @@ if barcoded:
 	runData['run_data']['barcoded'] = True
 	phantom_bases = 0
 	total_bases = 0
-	total_runs = 0
+	num_runs = 0
 	# Finished gathering the metrics for this PDF. Now write the metrics to a json for each barcode.
 	for run in runs:
 		run = run.split("\t")
-		# add up the bases for the run.
-		if run[0][0:3] != "Ion":
-			# This must be a phantom barocode or something.
-			phantom_bases += int(run[2].replace(",",""))
-		else:
-			total_runs += 1
-			total_bases += int(run[2].replace(",",""))
+		try:
+			# add up the bases for the run.
+			if run[0][0:3] != "Ion":
+				# This must be a phantom barocode or something.
+				phantom_bases += int(run[2].replace(",",""))
+			else:
+				num_runs += 1
+				total_bases += int(run[2].replace(",",""))
+		except ValueError:
+			print 'Unable to gather bases'
+			phantom_bases = ''
+			total_bases = ''
 		# if the current barcode matches this runs barcode, then add the run metrics.
 		if run[0] == runData['barcode']:
 			# add the run metrics to the run_data dicitonary
@@ -218,7 +269,8 @@ if barcoded:
 			runData['run_data']['mean_read_length'] = run[3]
 	# these metrics are used to calculate the percentage of expected bases.
 	runData['run_data']['total_chip_bases'] = total_bases - phantom_bases
-	runData['run_data']['num_runs_on_chip'] = total_runs
+	runData['run_data']['phantom_bases'] = phantom_bases
+	runData['run_data']['num_runs_on_chip'] = num_runs
 else:
 	runData['run_data']['barcoded'] = False
 	runData['run_data']['total_bases'] = bases

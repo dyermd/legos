@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2.7
 
 from optparse import OptionParser
 import os
@@ -7,6 +7,7 @@ import sys
 import re
 import numpy
 import json
+import subprocess
 
 class Align_Stats:
 	def __init__(self, debug=False):
@@ -46,6 +47,7 @@ class Align_Stats:
 	# @param bam the bam file on which to calculate the median read length
 	# @returns the medain read length of the bam file
 	def calcMedianFromBam(self, bam):
+		med = ''
 		align_file = "%s.alignment"%bam.split('.bam')[0]
 		command = "ionstats alignment -i %s -o %s "%(bam, align_file)
 		# run the command and check the output status
@@ -53,14 +55,25 @@ class Align_Stats:
 		if status == 0:
 			print "	Successfully gathered 'medain_read_length' from %s "%align_file
 			med = self.getMedianFromAlignFile(align_file)
+			print " Median Read Length: %s"%med
 			if self.debug:
 				print "Not removing %s"%align_file
 			else:
 				os.remove(align_file)
-			return med
 		else:
-			print "ERROR: ionstats failed on %s :("%bam
-			sys.exit(1)
+			# Don't force the script to quit. Let QC_sample.py finish
+			print "	ionstats failed on %s :("%bam
+			# Use samtools, awk, and sort to get the median read length of the bam file
+			command = "samtools view %s | awk '{ print length($10) }' | "%bam + \
+					"sort -n | awk '{ count[NR] = $1; } END { if (NR % 2) { print count[(NR + 1) / 2]; } else { print (count[(NR / 2)] + count[(NR / 2) + 1]) /2.0; }}'"
+			try:
+				print "	Trying %s"%command
+				med = subprocess.check_output(command, shell=True).strip()
+				print " Median Read Length: %s"%med
+			except AttributeError:
+				print "ERROR: need to use 'python2.7 %s' to get the median read length from a bam file using samtools"%s(sys.argv[0])
+			#sys.exit(1)
+		return med
 
 if __name__ == '__main__':
 
@@ -100,5 +113,5 @@ if __name__ == '__main__':
 		with open(options.json, 'w') as newJobFile:
 			json.dump(jsonData, newJobFile, sort_keys=True, indent=4)
 
-	print "	median read length: %d" %med
+	print "	median read length: %s" %med
 

@@ -112,12 +112,12 @@ do
 
 		-rdf | --remove_dup_flags)
 			REMOVE_DUP_FLAGS="True"
-			RUNNING="$RUNNING --remove_dup_flags: $2 "
+			RUNNING="$RUNNING --remove_dup_flags "
 			shift
 			;;
 		-fd | --flag_dups)
 			FLAG_DUPS="True"
-			RUNNING="$RUNNING --flag_dups: $2 "
+			RUNNING="$RUNNING --flag_dups "
 			shift
 			;;
 		-cl | --cleanup)

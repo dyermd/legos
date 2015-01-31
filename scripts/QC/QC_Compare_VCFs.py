@@ -31,10 +31,11 @@ class Compare_VCFs:
 		# a dictionary to keep track of the allele types of the two different files compared..
 		self.change_counts = {'WT_WT':0, 'WT_HET':0, "WT_HOM":0,'HET_WT':0, 'HET_HET':0, "HET_HOM":0, \
 				'HOM_WT':0, 'HOM_HET':0, "HOM_HOM":0,} 
+		self.chr_nums = {'1':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, '11':11, '12':12, '13':13, '14':14, '15':15, '16':16, '17':17, '18':18, '19':19, '20':20, '21':21, '22':22, 'X':23, 'Y':24, 'M':25}
 		#self.reassigned_GTs = 0
 		
 	# main function
-	def main(self):
+	def match_vcf_files(self):
 		# add the header lines to the csv file
 		self.outCSV.write("chr\tpos\tRef\tAlt\tRun1 GT\tRun1 AF\tRun1 Alternate Depth\tRun1 Ref Depth\t " + \
 				"Run2 GT\tRun2 AF\tRun2 Alternate Depth\tRun2 Ref Depth\n")
@@ -61,30 +62,25 @@ class Compare_VCFs:
 					line2 = self.skipVar(line2, 2)
 					line2arr = line2.split('\t')
 				else:
-					try:
-						var1Chr = int(line1arr[0][3:])
-						var2Chr = int(line2arr[0][3:])
-						var1Pos = int(line1arr[1])
-						var2Pos = int(line2arr[1])
-						# Check first to see if the chromosomes match. IF they don't, then whichever file has an extra variant should write that var.
-						if var1Chr != var2Chr:
-							if var1Chr < var2Chr:
-								line1 = self.skipVar(line1, 1)
-								line1arr = line1.split('\t')
-							else:
-								line2 = self.skipVar(line2, 2)
-								line2arr = line2.split('\t')
-						# Check the positions if they are on the same chromosome..
-						elif var1Pos < var2Pos:
+					var1Chr = self.chr_nums[line1arr[0][3:]]
+					var2Chr = self.chr_nums[line2arr[0][3:]]
+					var1Pos = int(line1arr[1])
+					var2Pos = int(line2arr[1])
+					# Check first to see if the chromosomes match. IF they don't, then whichever file has an extra variant should write that var.
+					if var1Chr != var2Chr:
+						if var1Chr < var2Chr:
 							line1 = self.skipVar(line1, 1)
-							line1arr = line1.split('\t')			
+							line1arr = line1.split('\t')
 						else:
 							line2 = self.skipVar(line2, 2)
 							line2arr = line2.split('\t')
-					# There could be a case where the x chromosome or the y chromosome has the extra variant. I'll have to figure that out later.
-					except ValueError:
-						self.matchTheRest(line1, line2)
-						break
+					# Check the positions if they are on the same chromosome..
+					elif var1Pos < var2Pos:
+						line1 = self.skipVar(line1, 1)
+						line1arr = line1.split('\t')			
+					else:
+						line2 = self.skipVar(line2, 2)
+						line2arr = line2.split('\t')
 		
 			# If the chr and positions match, then we're good to go.
 			if line1 != '' and line2 != '': # If the while loop hit the end of the file, then don't do anything here.
@@ -99,6 +95,11 @@ class Compare_VCFs:
 				line1 = self.vcf1.readline().strip()
 				line2 = self.vcf2.readline().strip()
 			
+		self.write_json_output()
+
+
+	# write the 3x3 table results to the JSON file.
+	def write_json_output(self):
 		# get the sample and run info from each run's json files.
 		json1 = self.getJsonData(options.jsons[0])
 		json2 = self.getJsonData(options.jsons[1])
@@ -143,37 +144,28 @@ class Compare_VCFs:
 		if 'QC_comparisons' not in json_out:
 			json_out['QC_comparisons'] = {} # a dictionary containing each QC_comparison
 		
+		# set the comp_type and chromosome
 		comp_type = self.change_counts['run1_type'] + "_" + self.change_counts['run2_type']
-		# if this is a cds specific comparison, append that to the key
-		if options.chr and options.chr != "all":
-			#self.change_counts['chr'] = options.chr
-			# check to add the chr dictionary
-			if options.chr not in json_out['QC_comparisons']:
-				json_out['QC_comparisons'][options.chr] = {}
-			if comp_type not in json_out['QC_comparisons'][options.chr]:
-				json_out['QC_comparisons'][options.chr][comp_type] = {}
-			if 'name' in json1:
-				json_out['QC_comparisons'][options.chr][comp_type]['%svs%s'%(json1['name'], json2['name'])] = self.change_counts
-			else:
-				# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
-				json_out['QC_comparisons'][options.chr][comp_type]['%svs%s'%(json1['run_name'], json2['run_name'])] = self.change_counts
+		if not options.chr:
+			chr = 'all'
+		else:
+			chr = options.chr
+		# check to add the chr dictionary
+		if chr not in json_out['QC_comparisons']:
+			json_out['QC_comparisons'][chr] = {}
+		if comp_type not in json_out['QC_comparisons'][chr]:
+			json_out['QC_comparisons'][chr][comp_type] = {}
+		if 'name' in json1:
+			json_out['QC_comparisons'][chr][comp_type]['%svs%s'%(json1['name'], json2['name'])] = self.change_counts
+		else:
+			# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
+			json_out['QC_comparisons'][chr][comp_type]['%svs%s'%(json1['run_name'], json2['run_name'])] = self.change_counts
 		# if this is a cds specific comparison, append that to the key
 		# This option is out of date. Don't use it.
 		#elif options.cds:
 		#	self.change_counts['CDS'] = True
 		#	# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
 		#	json_out['QC_comparisons']['CDS:' + json1['name'] + 'vs' + json2['name']] = self.change_counts
-		else:
-			# check to add the chr dictionary
-			if 'all' not in json_out['QC_comparisons']:
-				json_out['QC_comparisons']['all'] = {}
-			if comp_type not in json_out['QC_comparisons']['all']:
-				json_out['QC_comparisons']['all'][comp_type] = {}
-			if 'name' in json1:
-				json_out['QC_comparisons']['all'][comp_type][json1['name'] + 'vs' + json2['name']] = self.change_counts
-			else:
-				# the key will be Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
-				json_out['QC_comparisons']['all'][comp_type][json1['run_name'] + 'vs' + json2['run_name']] = self.change_counts
 		
 		# dump the json out file
 		with open(options.json_out, 'w') as newJSONFile:
@@ -182,6 +174,7 @@ class Compare_VCFs:
 		self.vcf1.close()
 		self.vcf2.close()
 		self.outCSV.close()
+
 
 	# (if flow-space values are present FAO/FRO values will be reported, if not then will use AO/RO values instead)
 	# based on FAO/FRO (or AO/RO) determine the total depth and allele frequency
@@ -283,38 +276,6 @@ class Compare_VCFs:
 			line2 = self.vcf2.readline().strip()
 			return line2
 
-	# Match the rest of the variants in the file. The rest should be like chrX, Y, chrM or other stuff
-	def matchTheRest(self, line1, line2):
-		vcf1_leftovers = {}
-		while line1 != '':
-			vcf1_leftovers["_".join(line1.split('\t')[0:3])] = line1
-			line1 = self.vcf1.readline().strip()
-		vcf2_leftovers = {}
-		while line2 != '':
-			vcf2_leftovers["_".join(line2.split('\t')[0:3])] = line2
-			line2 = self.vcf2.readline().strip()
-
-		for chr_pos in vcf1_leftovers:
-			line1arr = vcf1_leftovers[chr_pos].split('\t')
-			GT1Info = self.getGTInfo(vcf1_leftovers[chr_pos], self.WT1_Cutoff, self.HOM1_Cutoff)
-			if chr_pos in vcf2_leftovers:
-				line2arr = vcf2_leftovers[chr_pos].split('\t')
-				# this variant is found in both.
-				GT2Info = self.getGTInfo(vcf2_leftovers[chr_pos], self.WT2_Cutoff, self.HOM2_Cutoff)
-				self.outCSV.write('\t'.join([line1arr[0], line1arr[1], line1arr[3], line1arr[4], GT1Info[0], GT1Info[1], GT1Info[2], GT1Info[3], GT2Info[0], GT2Info[1], GT2Info[2], GT2Info[3]]) + '\n')
-				GT1_GT2 = GT1Info[0] + "_" +  GT2Info[0]
-				if GT1_GT2 in self.change_counts: # unknown (i.e ._.) will be skipped.
-					self.change_counts[GT1_GT2] += 1
-				# remove this variant from self.vcf2.
-				vcf2_leftovers.pop(chr_pos, None)
-			else:
-				self.outCSV.write('\t'.join([line1arr[0], line1arr[1], line1arr[3], line1arr[4], GT1Info[0], GT1Info[1], GT1Info[2], GT1Info[3], '.', '.', '.', '.']) + '\n')
-	
-		for chr_pos in vcf2_leftovers:
-			line2arr = vcf2_leftovers[chr_pos].split('\t')
-			GT2Info = self.getGTInfo(vcf2_leftovers[chr_pos], self.WT2_Cutoff, self.HOM2_Cutoff)
-			self.outCSV.write('\t'.join([line2arr[0], line2arr[1], line2arr[3], line2arr[4], '.', '.', '.', '.', GT2Info[0], GT2Info[1], GT2Info[2], GT2Info[3]]) + '\n')
-
 	# If the json file exists, get the dictionary from it. If not, then make it
 	def getJsonData(self, jsonFile):
 		if not os.path.isfile(jsonFile):
@@ -382,5 +343,5 @@ if __name__ == "__main__":
 		sys.exit(8)
 
 	compare_vcfs = Compare_VCFs(options)
-	compare_vcfs.main()
+	compare_vcfs.match_vcf_files()
 	

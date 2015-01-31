@@ -85,7 +85,7 @@ def getAllRunInfo(run_files):
 				all_run_data[jsonData['sample']] = {'runs': {}}
 			# the dictionary inside of run_data should hold all of this runs QC metrics such as % polyclonality and such
 			# if this json file is not a run json, then don't load it.
-			if 'json_type' in jsonData and jsonData['json_type'] != 'run':
+			if 'json_type' in jsonData and jsonData['json_type'] != 'run' and jsonData['json_type'] != 'merged':
 				pass
 			elif 'run_data' not in jsonData:
 				print "%s has no run_data"%jsonFile
@@ -94,7 +94,7 @@ def getAllRunInfo(run_files):
 				name = 'name'
 				if 'name' not in jsonData:
 					name = 'run_name'
-				all_run_data[jsonData['sample']]['runs'][jsonData[name]] = jsonData['run_data']
+				all_run_data[jsonData['sample']]['runs'][jsonData[name]] = dict(jsonData.items() + jsonData['run_data'].items())
 				if 'sample' not in all_run_data[jsonData['sample']]['runs'][jsonData[name]]:
 					all_run_data[jsonData['sample']]['runs'][jsonData[name]]['sample'] = jsonData['sample']
 					all_run_data[jsonData['sample']]['runs'][jsonData[name]]['run_num'] = jsonData[name]

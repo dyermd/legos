@@ -132,7 +132,7 @@ class XLSX_Writer():
 	def _writeRunMetricHeaders(self, ex_json_data=None):
 		# QCsheet is where all of the metrics about each run will be written
 		self.QCsheet = self.workbook.add_worksheet("QC Metrics")
-		self.QCsheet.freeze_panes(1,2)
+		self.QCsheet.freeze_panes(1,3)
 		
 		# First write the QC metrics for each run of each sample.
 		# Write the header line. there could definitely be a better way of doing this, but this is what I figured out for now. Just comment and uncomment as needed.
@@ -140,28 +140,30 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "Sample #", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "Library prep date", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,10, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
+		# check to see if the N or T should be written
+		if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+			self.QCsheet.write(0,col, "Normal (N) or Tumor (T)", self.formats['header_format'])
+			self.QCsheet.set_column(col,col,7, self.formats['center'])
+			col += 1
+		self.QCsheet.write(0,col, "Run #", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,5, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "Library concentration (ng/ul)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "Run #", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,5, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Run ID", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
+		self.QCsheet.write(0,col, "Library prep date", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,10, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "Run Date", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "Total M Basepairs", self.formats['header_format'])
+		self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "% Amplicons > 30x coverage", self.formats['header_format'])
+		self.QCsheet.write(0,col, "Run ID", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,None, self.formats['center'])
+		col += 1
+		self.QCsheet.write(0,col, "Total M Basepairs", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "% Polyclonal", self.formats['header_format'])
@@ -174,10 +176,16 @@ class XLSX_Writer():
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
 		# see if we have the exp_read_length
-		if ex_json_data and 'exp_read_length' in ex_json_data['analysis']['settings']:
-			self.QCsheet.write(0,col, "% expected read length (out of %d bp)"%ex_json_data['analysis']['settings']['exp_read_length'], self.formats['header_format'])
+		if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings'] and 'exp_median_read_length' in ex_json_data['analysis']['settings']['cutoffs']:
+			self.QCsheet.write(0,col, "%% expected read length (out of %d bp)"%ex_json_data['analysis']['settings']['cutoffs']['exp_median_read_length'], self.formats['header_format'])
 		else:
 			self.QCsheet.write(0,col, "% expected read length (out of XXX bp)", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,12, self.formats['center'])
+		col += 1
+		self.QCsheet.write(0,col, "Median Read Coverage Overall", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,None, self.formats['center'])
+		col += 1
+		self.QCsheet.write(0,col, "% amplicons > 30x coverage", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp +10 (considering fwd/rev read split)", self.formats['header_format'])
@@ -269,12 +277,17 @@ class XLSX_Writer():
 			self.QCsheet.write(0,col, "Run Status FAIL if (i) %% expected median read length <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['perc_exp_median_read_length']) + \
 					"OR (ii) %% Amplicons covered at +10 and/or n-10th position <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['begin_end_amp_cov']) + \
 					"OR (iii) pools found <50% median coverage", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			self.QCsheet.set_column(col,col,20, self.formats['center'])
 			col += 1
-			self.QCsheet.write(0,col, "QC status (PASSED RUN status but FAILED with error rate > %.3e in QC table). "%(ex_json_data['analysis']['settings']['cutoffs']['error_rate']) + \
+			self.QCsheet.write(0,col, "QC status (PASSED RUN status but FAILED with error rate > %.1e in QC table). "%(ex_json_data['analysis']['settings']['cutoffs']['error_rate']) + \
 					"Look at only Normal-Normal or Tumor-Tumor comparison in the case of LOH candidates", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
+			self.QCsheet.set_column(col,col,20, self.formats['center'])
 			col += 1
+			# write this final header for tumor_normal comparisons
+			if 'merged_amp_cov' in ex_json_data['analysis']['settings']['cutoffs'] and ex_json_data['sample_type'] == "tumor_normal":
+				self.QCsheet.write(0,col, "Final Merged QC Status (PASS if the %% available bases is > %s in the final tumor/normal comparison"%(ex_json_data['analysis']['settings']['cutoffs']['merged_amp_cov']))
+				self.QCsheet.set_column(col,col,15, self.formats['center'])
+				col += 1
 		except KeyError:
 			self.QCsheet.write(0,col, "run pass/fail status", self.formats['header_format'])
 			self.QCsheet.set_column(col,col,None, self.formats['center'])
@@ -305,14 +318,24 @@ class XLSX_Writer():
 				col = 0
 				#col += self._check_to_write(row, col, 'sample_num', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'sample', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'barcode', "" + azure, metrics)
+				# write the run number with the N or T
+				if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+					if 'run_type' in metrics and metrics['run_type'] == 'normal':
+						self.QCsheet.write(row, col, "N")
+					else:
+						self.QCsheet.write(row, col, "T")
+					col += 1
+				# if this is a merged run, then put the merged name for the run number
+				if 'json_type' in metrics and metrics['json_type'] == 'merged':
+					col += self._check_to_write(row, col, 'run_name', "" + azure, metrics)
+				else:
+					col += self._check_to_write(row, col, 'run_num', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'run_num', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'run_date', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'barcode', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'total_bases', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'amp_cov', "perc_format" + azure, metrics)
 				# Old naming sheme:
 				#col += self._check_to_write(row, col, 'polyclonal', "perc_format" + azure, metrics)
 				#col += self._check_to_write(row, col, 'mean', "num_format" + azure, metrics)
@@ -320,11 +343,13 @@ class XLSX_Writer():
 				col += self._check_to_write(row, col, 'polyclonality', "perc_format" + azure, metrics)
 				col += self._check_to_write(row, col, 'mean_read_length', "num_format" + azure, metrics)
 				col += self._check_to_write(row, col, 'median_read_length', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'perc_exp_median_read_length', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'perc_exp_median_read_length', 'perc_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'median_coverage_overall', "num_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'amp_cov', "perc_format" + azure, metrics)
 				col += self._check_to_write(row, col, 'begin_amp_cov', 'perc_format' + azure, metrics)
 				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
 				# give it the dummy 'end_amp_cov' key to write the function of +-10 bp difference. the = is for a function
-				col += self._check_to_write(row, col, 'end_amp_cov', "=dec3_format" + azure, metrics)
+				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'total_covered', 'num_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'perc_expected', 'perc_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'perc_targeted', 'perc_format' + azure, metrics)
@@ -354,6 +379,12 @@ class XLSX_Writer():
 						col += 1
 					else:
 						col += self._check_to_write(row, col, 'pass_fail_3x3_status', azure, metrics)
+					# if this is a tumor_normal comparison and the runs have been merged and QCd, write this metric
+					if 'pass_fail_merged_status' in metrics and metrics['pass_fail_merged_status'] == 'fail':
+						self.QCsheet.write(row, col, metrics['pass_fail_merged_status'].upper(), self.formats['red'])
+						col += 1
+					else:
+						col += self._check_to_write(row, col, 'pass_fail_merged_status', azure, metrics)
 				else:
 					# if there are no cutoffs, then the script wont know if it passes or fails yet.
 					self.QCsheet.write(row, col, 'pending', self.formats[azure])
@@ -563,6 +594,7 @@ if (__name__ == "__main__"):
 	QC_3x3_json_data = {}
 	# Get the data available by finding the json files in the project_path specified.
 	for project_path in options.project_paths:
+		project_path = os.path.abspath(project_path)
 		# if the 3x3 tables are not the only thing you want, then get the QC run metrics
 		if not options.qc_info_only:
 			runs_json_data = dict(runs_json_data.items() + QC_stats.main_runs_only(project_path).items())

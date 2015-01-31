@@ -24,6 +24,26 @@ class Cleanup:
 
 
 	# @param runs loop through and cleanup each run.
+	def delete_runs(self, runs, cleanup_flag=True, no_errors=True):
+		if cleanup_flag == True and no_errors == True:
+			for run in runs:
+				self.delete_run(run)
+
+
+	# Cleanup the PTRIM and assorted files generated.
+	def delete_run(self, run):
+		try:
+			run_json = json.load(open(run))
+			# Remove the bam file and bam index file
+			print "Removing the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
+			os.remove("%s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0]))
+			os.remove("%s/%s.bai"%(run_json['run_folder'], run_json['analysis']['files'][0]))
+			print "Removed the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
+		except (OSError, KeyError, ValueError) as e:
+			print "Failed to remove the bam file!"
+
+
+	# @param runs loop through and cleanup each run.
 	def cleanup_runs(self, runs, cleanup_flag=True, no_errors=True):
 		if cleanup_flag == True and no_errors == True:
 			for run in runs:
@@ -63,8 +83,8 @@ if __name__ == '__main__':
 
 	(options, args) = parser.parse_args()
 
-	if not os.path.isfile(options.json):
-		print "USAGE_ERROR: json: %s not found"%options.json
+	if not options.json or not os.path.isfile(options.json):
+		print "USAGE_ERROR: json: '%s' not found"%options.json
 		parser.print_help()
 		sys.exit(1)
 
