@@ -46,8 +46,13 @@ class Cleanup:
 	# @param runs loop through and cleanup each run.
 	def cleanup_runs(self, runs, cleanup_flag=True, no_errors=True):
 		if cleanup_flag == True and no_errors == True:
+			# now cleanup the runs
 			for run in runs:
 				self.cleanup_run(run)
+		# first check to see if there are ionstats files
+		ionstats_files = glob.glob("core.ion*")
+		for ion_file in ionstats_files:
+			os.remove(ion_file)
 
 
 	# Cleanup the PTRIM and assorted files generated.

@@ -633,7 +633,7 @@ class QC_Sample:
 		xlsx_file = '%s/%s_QC.xlsx'%(self.sample_json['qc_folder'], self.sample_json['sample_name'])
 		
 		make_xlsx_command = "python2.7 %s/QC_generateSheets.py "%self.__QCDirectory + \
-			"--project_path %s "%self.sample_json['sample_folder'] + \
+			"--sample_path %s "%self.sample_json['sample_folder'] + \
 			"--sheet_per_sample " + \
 			"--out %s "%xlsx_file + \
 			"--ex_json %s "%(self.sample_json['json_file'])

@@ -562,7 +562,7 @@ if (__name__ == "__main__"):
 	parser = OptionParser()
 	
 	# All of the arguments are specified here.
-	parser.add_option('-p', '--project_path', dest='project_paths', action='append', help='REQUIRED: /path/to/the/project_dir. Can provide muliple paths')
+	parser.add_option('-s', '--sample_path', dest='sample_paths', action='append', help='REQUIRED: /path/to/the/sample_dir. Can provide muliple paths')
 	parser.add_option('-r', '--run_info_only', dest='run_info_only', action="store_true", default=False, help="Get only the individual run's info. Default is to get both run info and the 3x3 table qc_comparisons")
 	parser.add_option('-q', '--qc_info_only', dest='qc_info_only', action="store_true", default=False, help="Get only the 3x3 table QC comparison info. Default is to get both run info and the 3x3 table qc_comparisons")
 	parser.add_option('-S', '--sheet_per_sample', dest='sheet_per_sample', action="store_true", default=False, help="Will write a new sheet containing the 3x3 table comparisons per sample.")
@@ -572,8 +572,8 @@ if (__name__ == "__main__"):
 	# Gets all of the command line arguments specified and puts them into the dictionary args
 	(options, args) = parser.parse_args()
 	
-	if not options.project_paths:
-		print "USAGE_ERR: --project_path is required! Use -h for help"
+	if not options.sample_paths:
+		print "USAGE_ERR: --sample_path is required! Use -h for help"
 		parser.print_help()
 		sys.exit(8)
 	
@@ -592,15 +592,15 @@ if (__name__ == "__main__"):
 
 	runs_json_data = {}
 	QC_3x3_json_data = {}
-	# Get the data available by finding the json files in the project_path specified.
-	for project_path in options.project_paths:
-		project_path = os.path.abspath(project_path)
+	# Get the data available by finding the json files in the sample_path specified.
+	for sample_path in options.sample_paths:
+		sample_path = os.path.abspath(sample_path)
 		# if the 3x3 tables are not the only thing you want, then get the QC run metrics
 		if not options.qc_info_only:
-			runs_json_data = dict(runs_json_data.items() + QC_stats.main_runs_only(project_path).items())
+			runs_json_data = dict(runs_json_data.items() + QC_stats.main_runs_only(sample_path).items())
 		# if the QC run metrics are not the only thing you want, then get the 3x3 tables
 		if not options.run_info_only:
-			QC_3x3_json_data = dict(QC_3x3_json_data.items() + QC_stats.main_QC_only(project_path).items())
+			QC_3x3_json_data = dict(QC_3x3_json_data.items() + QC_stats.main_QC_only(sample_path).items())
 
 	if not options.qc_info_only:
 		ex_json_data = None
