@@ -59,7 +59,7 @@ class QC_Sample:
 			if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail:
 				# QC the normal runs with each other
 				self.QC_runs(self.sample_json['runs'])
-		
+
 				# Cleanup the PTRIM.bam and chr bam files after all of the QC is done.
 				self.cleanup_sample.cleanup_runs(self.sample_json['runs'], self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
 	
@@ -175,14 +175,19 @@ class QC_Sample:
 				self.getRunInfo(run, pref)
 				# Update the run status based on the metrics gathered by QC_getRunInfo.sh
 				self.update_run_status(run, len(runs))
-		for run1 in runs:
-			run1_json = json.load(open(run1))
-			for run2 in runs:
-				run2_json = json.load(open(run2))
-				# check to see if these two runs should be QC'd together. Only QC the runs that pass the single run QC metrics.
-				if int(run1_json['run_num']) < int(run2_json['run_num']) and run1_json['pass_fail_status'] == 'pass' and run2_json['pass_fail_status'] == 'pass': 
-					qc_json = self.QC_2Runs(run1, run2, pref, pref)
-					self.update_3x3_runs_status(run1, run2, qc_json)
+		# if there is only one run for this sample, then set the status to 'pending_merge' so that the only run will be set as the 'final_json'
+		passing_runs = self.get_runs_status(runs)[0]
+		if len(passing_runs) == 1:
+			self.sample_json['sample_stats'] == 'pending_merge'
+		else:
+			for run1 in runs:
+				run1_json = json.load(open(run1))
+				for run2 in runs:
+					run2_json = json.load(open(run2))
+					# check to see if these two runs should be QC'd together. Only QC the runs that pass the single run QC metrics.
+					if int(run1_json['run_num']) < int(run2_json['run_num']) and run1_json['pass_fail_status'] == 'pass' and run2_json['pass_fail_status'] == 'pass': 
+						qc_json = self.QC_2Runs(run1, run2, pref, pref)
+						self.update_3x3_runs_status(run1, run2, qc_json)
 
 
 	# now QC the tumor and normal runs together.
@@ -430,15 +435,6 @@ class QC_Sample:
 				status = 'fail'
 		# set the pass fail status for this run
 		run_json['pass_fail_status'] = status
-		# set the pass_fail_3x3_status to pending or remove it.
-		if status != 'fail' and num_runs > 1:
-			# set the 3x3 pass_fail_status
-			run_json['pass_fail_3x3_status'] = 'pending'
-		else:
-			# set sample_status to pending_merge so that the only run will be set as the 'final_run'
-			self.sample_json['sample_status'] = 'pending_merge'
-			if 'pass_fail_3x3_status' in run_json:
-				del run_json['pass_fail_3x3_status']
 		# write this run's updated status to the json file
 		self.write_json(run, run_json)
 

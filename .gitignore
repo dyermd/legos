@@ -1,6 +1,10 @@
 # ignore the compiled files
 *.pyc
 
+# ignore the temp files
+*.swp # from vim
+*~ # from emacs
+
 # ignore spreadsheets
 *.xlsx
 
