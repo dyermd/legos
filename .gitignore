@@ -2,8 +2,8 @@
 *.pyc
 
 # ignore the temp files
-*.swp # from vim
-*~ # from emacs
+*.swp
+*~
 
 # ignore spreadsheets
 *.xlsx
