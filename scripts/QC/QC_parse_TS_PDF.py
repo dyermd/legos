@@ -204,11 +204,11 @@ else:
 	txtFile.readline()
 	txtFile.readline()
 	line = txtFile.readline().strip()
-	# get the Total Bases from the 5th line of the pdf
+	# get the Total Bases from the 5th line of the pdf.
 	if re.search("G", line):
-		bases = float(line.split("G")[0]) * 100
+		bases = float(line.split("G")[0])
 	elif re.search("M", line):
-		bases = float(line.split("M")[0])
+		bases = float(line.split("M")[0]) / 100
 	else:
 		print "total bases not found?"
 

@@ -109,12 +109,12 @@ class QC_Sample:
 				normal_merge_dir, normal_passing_bams, normal_merge_count = self.check_merge(normal_runs, 'Normal/', 'normal_')
 				if normal_merge_dir != '':
 					# merge the normal and/or tumor runs. Will only merge the passing runs with each other.
-					self.merge_runs(normal_passing_bams, normal_merge_dir, 'normal', 'Normal_Merged%d'%normal_merge_count, 'normal_')
+					self.merge_runs(normal_passing_bams, normal_merge_dir, 'normal', 'NMerged%d'%normal_merge_count, 'normal_')
 	
 				# Check to see if the tumor runs are ready to be merged.
 				tumor_merge_dir, tumor_passing_bams, tumor_merge_count = self.check_merge(tumor_runs, 'Tumor/', 'tumor_')
 				if tumor_merge_dir != '':
-					self.merge_runs(tumor_passing_bams, tumor_merge_dir, 'tumor', 'Tumor_Merged%d'%tumor_merge_count, 'tumor_')
+					self.merge_runs(tumor_passing_bams, tumor_merge_dir, 'tumor', 'TMerged%d'%tumor_merge_count, 'tumor_')
 	
 				# If any runs were merged, QC them. If there are only 1 normal and tumor run, they won't be QCd again. 
 				if normal_merge_dir != '' or tumor_merge_dir != '' or (len(normal_runs) == 1 and len(tumor_runs) == 1):	
@@ -539,6 +539,7 @@ class QC_Sample:
 			if len(passing_bams) == 1:
 				# There is only one run, so don't merge it. Set the "final_%sjson"%pref flag to show what the final run is
 				self.sample_json["final_%sjson"%pref] = run
+			# use the 'merged_json' flag rather than the 'final_json' flag because 'final_json' can be set by a single non-merged run.
 			elif 'merged_%sjson'%pref in self.sample_json and os.path.isfile(self.sample_json['merged_%sjson'%pref]):
 				merged_json_data = json.load(open(self.sample_json['merged_%sjson'%pref]))
 				# If the runs used to generate the current merged.bam file dont match the current passing_bams, then merge them. Otherwise don't

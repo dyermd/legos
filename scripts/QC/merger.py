@@ -87,7 +87,7 @@ class Merger:
 
 		# IF specified, cleanup the temporary files
 		#if self.cleanup:
-		# Need to cleanup here inorder for TVC to work.
+		# Need to cleanup here inorder for TVC to work. there can only be one bam file in the merged dir.
 		os.remove("%s/merged_badHeader.bam"%self.output_dir)
 		os.remove("%s/merged.headerCorrected.sam"%self.output_dir)
 		os.remove("%s/merged.header.sam"%self.output_dir)

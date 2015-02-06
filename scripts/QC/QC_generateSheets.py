@@ -148,6 +148,9 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "Run #", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,5, self.formats['center'])
 		col += 1
+		self.QCsheet.write(0,col, "gDNA isolation date", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,10, self.formats['center'])
+		col += 1
 		self.QCsheet.write(0,col, "Library concentration (ng/ul)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
@@ -157,13 +160,16 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "Run Date", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
 		self.QCsheet.write(0,col, "Run ID", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "Total M Basepairs", self.formats['header_format'])
+		self.QCsheet.write(0,col, "Thermocycler Used", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,12, self.formats['center'])
+		col += 1
+		self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,12, self.formats['center'])
+		col += 1
+		self.QCsheet.write(0,col, "Total Basepairs (G)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,12, self.formats['center'])
 		col += 1
 		self.QCsheet.write(0,col, "% Polyclonal", self.formats['header_format'])
@@ -288,7 +294,7 @@ class XLSX_Writer():
 				self.QCsheet.write(0,col, "Final Merged QC Status (PASS if the %% available bases is > %s in the final tumor/normal comparison"%(ex_json_data['analysis']['settings']['cutoffs']['merged_amp_cov']))
 				self.QCsheet.set_column(col,col,15, self.formats['center'])
 				col += 1
-		except KeyError:
+		except (KeyError, TypeError):
 			self.QCsheet.write(0,col, "run pass/fail status", self.formats['header_format'])
 			self.QCsheet.set_column(col,col,None, self.formats['center'])
 			col += 1
@@ -330,9 +336,11 @@ class XLSX_Writer():
 					col += self._check_to_write(row, col, 'run_name', "" + azure, metrics)
 				else:
 					col += self._check_to_write(row, col, 'run_num', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'gDNA_isolation', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'run_date', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'thermocycler', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'barcode', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'total_bases', "num_format" + azure, metrics)

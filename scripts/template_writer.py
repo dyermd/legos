@@ -79,11 +79,16 @@ class TemplateWriter:
         #set the status and wrap if requested
         if not wrap:
             fileHandle.write('python %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, status))
+			# I'm not sure how to send emails the normal way so I set up ssmtp on the linux server.
+            fileHandle.write('echo "%s beginning analysis" | ssmtp -vvv jlaw@childhooddiseases.org' % (job['sample_name']))
         else:
             fileHandle.write('if [ $? -ne 0 ]; then\n')
             fileHandle.write('\tpython %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, "failed"))
+            #if 'emails' in job and 'sample_name' in job:
+            fileHandle.write('\techo "%s finished with a status of %s" | ssmtp -vvv jlaw@childhooddiseases.org' % (job['sample_name'], "failed"))
             fileHandle.write('else\n')
             fileHandle.write('\tpython %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, status))
+            fileHandle.write('\techo "%s finished with a status of %s" | ssmtp -vvv jlaw@childhooddiseases.org' % (job['sample_name'], status))
             fileHandle.write('fi\n')
 
 
