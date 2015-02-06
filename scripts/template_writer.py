@@ -25,20 +25,20 @@ class TemplateWriter:
         if job['analysis']['type'] == 'qc_tvc':
             #we want to merge, QC, then call variants
             self.__writeHeader(job, fileHandle)
-            self.__writeStatusChange('running', job['json_file'], fileHandle, False)
+            self.__writeStatusChange('running', job['json_file'], fileHandle, False, job['sample_name'])
             self.__writeCovTVCTemplate(job, fileHandle)
-            self.__writeStatusChange('finished', job['json_file'], fileHandle, True)
+            self.__writeStatusChange('finished', job['json_file'], fileHandle, True, job['sample_name'])
         elif job['analysis']['type'] == 'qc_compare':
             print 'hit'
             self.__writeHeader(job, fileHandle)
-            self.__writeStatusChange('running', job['json_file'], fileHandle, False)
+            self.__writeStatusChange('running', job['json_file'], fileHandle, False, job['sample_name'])
             self.__writeQCCompareTemplate(job, fileHandle)
-            self.__writeStatusChange('finished', job['json_file'], fileHandle, True)
+            self.__writeStatusChange('finished', job['json_file'], fileHandle, True, job['sample_name'])
         elif job['analysis']['type'] == 'qc_sample':
             self.__writeHeader(job, fileHandle)
-            self.__writeStatusChange('running', job['json_file'], fileHandle, False)
+            self.__writeStatusChange('running', job['json_file'], fileHandle, False, job['sample_name'])
             self.__writeQCSampleTemplate(job, fileHandle)
-            self.__writeStatusChange('finished', job['json_file'], fileHandle, True)
+            self.__writeStatusChange('finished', job['json_file'], fileHandle, True, job['sample_name'])
 
         #close the file handle
         fileHandle.close()
@@ -75,7 +75,7 @@ class TemplateWriter:
     # @param jsonFile The json file to update the status in
     # @param file The file handle
     # @param wrap Boolean of whether or not to wrap the status
-    def __writeStatusChange(self, status, jsonFile, fileHandle, wrap):
+    def __writeStatusChange(self, status, jsonFile, fileHandle, wrap, sample_name):
         #set the status and wrap if requested
         if not wrap:
             fileHandle.write('python %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, status))
