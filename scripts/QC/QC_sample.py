@@ -320,12 +320,12 @@ class QC_Sample:
 		run2_json = json.load(open(run2))
 	
 		# set the paths
-		if 'results_QC_json' in self.sample_json and 'qc_folder' in self.sample_json:
-			qc_json = self.sample_json['results_QC_json']
+		if 'results_qc_json' in self.sample_json and 'qc_folder' in self.sample_json:
+			qc_json = self.sample_json['results_qc_json']
 			qc_folder = self.sample_json['qc_folder']
 		else:
-			qc_json = "%s/QC/results_QC.json"%self.sample_json['output_folder']
-			self.sample_json['results_QC_json'] = qc_json
+			qc_json = "%s/QC/results_qc.json"%self.sample_json['output_folder']
+			self.sample_json['results_qc_json'] = qc_json
 			self.sample_json['qc_folder'] = "%s/QC"%self.sample_json['output_folder']
 			qc_folder = self.sample_json['qc_folder']
 	
