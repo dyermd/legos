@@ -588,9 +588,10 @@ if (__name__ == "__main__"):
 	# Ensure the user specifies a .xlsx ending if the -o/--output option is used
 	if options.out[-5:] != ".xlsx":
 		parser.error("-o (--out) output file must end in .xlsx")
+	output_file_path = os.path.abspath("/".join(options.out.split("/")[:-1]))
 	# if the dir to place the QC file doesn't exist then make it
-	elif not os.path.isdir("/".join(options.out.split("/")[:-1])):
-		os.mkdir("/".join(options.out.split("/")[:-1]))
+	if not os.path.isdir(output_file_path):
+		os.mkdir(output_file_path)
 	
 	# setup the xlsx workbook
 	workbook = xlsxwriter.Workbook(options.out)
