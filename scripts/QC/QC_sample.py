@@ -305,7 +305,7 @@ class QC_Sample:
 				os.remove('ionstats_error_summary.h5')
 		#else:
 			#print "'median_read_length' already gathered: ", new_run_json['run_data']['median_read_length']
-		if 'cutoffs' in self.sample_json['analysis']['settings'] and 'exp_median_read_length' in self.sample_json['analysis']['settings']['cutoffs']:
+		if 'run_data' in new_run_json and 'cutoffs' in self.sample_json['analysis']['settings'] and 'exp_median_read_length' in self.sample_json['analysis']['settings']['cutoffs']:
 			# Now set the perc_exp_median_read_length
 			new_run_json['run_data']['perc_exp_median_read_length'] = float(new_run_json['run_data']['median_read_length']) / float(self.sample_json['analysis']['settings']['cutoffs']['exp_median_read_length'])
 		#write new json file
