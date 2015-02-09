@@ -386,7 +386,7 @@ class QC_Sample:
 				#run the qcgetruninfo command
 				status = self.runCommandLine(qc2runs)
 				if status != 0:
-					sys.stderr.write("%s QC_2Runs.sh had an error!!\n"%run)
+					sys.stderr.write("%s vs %s QC_2Runs.sh had an error!!\n"%(run1, run2))
 					self.no_errors = False
 		return qc_json
 
