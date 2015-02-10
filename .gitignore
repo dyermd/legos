@@ -6,6 +6,7 @@
 *~
 
 # ignore spreadsheets
+*.csv
 *.xlsx
 
 # ignore OS generated files

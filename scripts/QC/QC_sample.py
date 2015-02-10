@@ -144,6 +144,15 @@ class QC_Sample:
 		# make the excel spreadsheet containing the data and copy it back to the proton
 		self._make_xlsx()
 				
+		# print the final status
+		if self.no_errors == False:
+			print "%s finished with errors. See %s/sge.log for more details"%(self.sample_json['sample_name'], self.sample_json['output_folder'])
+			self.sample_json['sample_status'] == 'failed'
+			self.write_json(self.sample_json['json_file'], self.sample_json)
+			sys.exit(1)
+		else:
+			print "%s finished with no errors!"%(self.sample_json['sample_name'])
+
 		# write the sample json file
 		self.write_json(self.sample_json['json_file'], self.sample_json)
 
@@ -701,6 +710,7 @@ if __name__ == '__main__':
 
 		# QC and merge all of the runs
 		qc_sample.QC_merge_runs()
+
 	except ValueError as e:
 		#print sys.exc_traceback
 		print traceback.format_exc().strip()
