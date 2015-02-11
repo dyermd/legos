@@ -158,6 +158,23 @@ class QC_Sample:
 		tumor_runs = []
 		for run in self.sample_json['runs']:
 			run_json = json.load(open(run))
+			# temp fix for runs that have old JSON files (i.e. SEGA)
+			if 'run_type' not in run_json or 'run_num' not in run_json:
+				if re.search('N-', run):
+					run_json['run_type'] = 'normal'
+				else:
+					run_json['run_type'] = 'tumor'
+				run_json['pass_fail_status'] = 'pending'
+				run_json['json_type'] = 'run'
+				run_json['json_file'] = run
+				run_json['run_name'] = run_json['name']
+				run_json['run_num'] = run_json['run_name'][-1]
+				run_json['sample_name'] = run_json['sample']
+				if re.search('-', run_json['sample_folder']):
+					run_json['run_folder'] = '/'.join(run.split('/')[:-1])
+					run_json['sample_folder'] = os.path.abspath('/'.join(run.split('/')[:-1]) + "/../..")
+				self.write_json(run, run_json)
+				# temp fix over
 			if run_json['run_type'] == 'normal':
 				normal_runs.append(run)
 			elif run_json['run_type'] == 'tumor':
@@ -189,7 +206,7 @@ class QC_Sample:
 				for run2 in runs:
 					run2_json = json.load(open(run2))
 					# check to see if these two runs should be QC'd together. Only QC the runs that pass the single run QC metrics.
-					if int(run1_json['run_num']) < int(run2_json['run_num']) and run1_json['pass_fail_status'] == 'pass' and run2_json['pass_fail_status'] == 'pass': 
+					if int(run1_json['run_num']) < int(run2_json['run_num']) and ((run1_json['pass_fail_status'] == 'pass' and run2_json['pass_fail_status'] == 'pass') or self.options.qc_all: 
 						qc_json = self.QC_2Runs(run1, run2, pref, pref)
 						self.update_3x3_runs_status(run1, run2, qc_json)
 
@@ -270,7 +287,9 @@ class QC_Sample:
 	def getRunInfo(self, run, pref):
 		run_json = json.load(open(run))
 		# if the following metrics have already been gathered, then skip running getRunInfo.sh
-		if 'run_data' in run_json and 'ts_tv' in run_json['run_data'] and 'beg_amp_cov' in run_json['run_data'] and 'num_het' in run_json['run_data'] and ('pools_total' in run_json['run_data'] or self.sample_json['analysis']['settings']['pool_dropout'] != True):
+		if 'run_data' in run_json and 'ts_tv' in run_json['run_data'] and 'beg_amp_cov' in run_json['run_data'] and 'num_het' in run_json['run_data'] \
+				and 'amp_cov' in run_json['run_data'] \
+				and ('pools_total' in run_json['run_data'] or self.sample_json['analysis']['settings']['pool_dropout'] != True):
 			print "%s already has the needed metrics. Skipping getRunInfo.sh"%run
 		else:
 			# QC_getRunInfo.sh gets the following metrics: % amps covered at the beg and end, Ts/Tv ratio,	# Total variants,	# HET variants, 	# HOM variants
@@ -427,7 +446,7 @@ class QC_Sample:
 				print "%s/%s fialed the 'run_amp_cov' flag. %.2f < %.2f"%(run_json['sample'], run_json['run_name'], run_json['run_data']['amp_cov'], self.sample_json['analysis']['settings']['cutoffs']['run_amp_cov'])
 				status = 'fail'
 			# check the pool coverage
-			if self.sample_json['analysis']['settings']['pool_dropout']:
+			if self.sample_json['analysis']['settings']['pool_dropout'] and 'pools_between_10_and_50' in run_json['run_data'] and 'pools_less_than_10' in run_json['run_data']:
 				# currently the only options are 10, 50, and 75 so just stick with this.
 				if run_json['run_data']['pools_between_10_and_50'] > 0 or run_json['run_data']['pools_less_than_10'] > 0:
 					print "%s/%s has pools with < 50%% covergae"%(run_json['sample'], run_json['run_name'])
@@ -677,6 +696,7 @@ if __name__ == '__main__':
 	# add the options to parse
 	parser.add_option('-j', '--json', dest='json', help="A sample's json file which contains the necessary options and list of runs to QC with each other")
 	#parser.add_option('-m', '--merge', dest='merge', help="Merge the runs of a sample. Currently Automatic 'pass/fail' status is not updated, so this script must be run again after cutoffs are figured out.")
+	parser.add_option('-q', '--qc_all', dest='qc_all', action='store_true', help="Generate the 3x3 tables for all run comparisons, even if they fail.")
 	parser.add_option('-p', '--pass_fail', dest='pass_fail', action='store_true', help="Overwrite the 'pass/fail' status of each run according to the cutoffs found in the json file. Normally this step is skipped if all runs have finished the QC process, but this option will overwrite the 'pass/fail' status found.")
 	parser.add_option('-u', '--update_cutoffs', dest='update_cutoffs', help="Change the cutoffs found in the JSON file using an example json file with the corrected cutoffs. Will be done before anything else in the script.")
 
