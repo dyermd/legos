@@ -340,9 +340,9 @@ class XLSX_Writer():
 				col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'run_date', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'thermocycler', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'barcode', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'total_bases', "num_format" + azure, metrics)
 				# Old naming sheme:
 				#col += self._check_to_write(row, col, 'polyclonal', "perc_format" + azure, metrics)
@@ -357,7 +357,7 @@ class XLSX_Writer():
 				col += self._check_to_write(row, col, 'begin_amp_cov', 'perc_format' + azure, metrics)
 				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
 				# give it the dummy 'end_amp_cov' key to write the function of +-10 bp difference. the = is for a function
-				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
+				col += self._check_to_write(row, col, 'end_amp_cov', '=perc_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'total_covered', 'num_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'perc_expected', 'perc_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'perc_targeted', 'perc_format' + azure, metrics)

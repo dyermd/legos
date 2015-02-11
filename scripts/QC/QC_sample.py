@@ -22,13 +22,11 @@ class QC_Sample:
 		self.no_errors = True
 		self.cleanup_sample = Cleanup()
 	
-
 	# @param path the path of the json file
 	# @json_data the json dictionary to be written
 	def write_json(self, path, json_data):
 		with open(path, 'w') as newJobFile:
 			json.dump(json_data, newJobFile, sort_keys=True, indent=4)
-
 
 	# @param systemCall the command to run by bash
 	# @returns the status of either 0 or 1.
@@ -38,7 +36,6 @@ class QC_Sample:
 		status = os.system(systemCall)
 		return(status)
 
-	
 	# if the update_json flag is specified, then update the cutoffs found in the normal json file.
 	def update_cutoffs(self):
 		# load the json file
@@ -48,6 +45,19 @@ class QC_Sample:
 		# write the updated sample's json file.
 		self.write_json(self.options.json, self.sample_json)
 
+	# move the old 3x3 tables to the flag "old_GTs" 
+	def recalc_3x3_tables(self):
+		# load the output QC json. will be used to check if this combination has already been made.
+		qc_json_data = {}
+		if os.path.isfile(qc_json):
+			qc_json_data = json.load(open(qc_json))
+		# if the user specified to recalculate the 3x3 tables, do that here.
+		if self.options.recalc_3x3_tables and 'QC_comparisons' in qc_json_data:
+			# rearrange the old 3x3 tables to calculate the new 3x3 tables usingn the updated GT cutoffs
+			qc_json_data['old_GTs'] = qc_json_data['QC_comparisons']
+			del qc_json_data['QC_comparisons']
+			self.write_json(qc_json, qc_json_data)
+	
 
 	# will find all of the runs in a sample and QC them with each other
 	def QC_merge_runs(self):
@@ -206,7 +216,7 @@ class QC_Sample:
 				for run2 in runs:
 					run2_json = json.load(open(run2))
 					# check to see if these two runs should be QC'd together. Only QC the runs that pass the single run QC metrics.
-					if int(run1_json['run_num']) < int(run2_json['run_num']) and ((run1_json['pass_fail_status'] == 'pass' and run2_json['pass_fail_status'] == 'pass') or self.options.qc_all: 
+					if int(run1_json['run_num']) < int(run2_json['run_num']) and ((run1_json['pass_fail_status'] == 'pass' and run2_json['pass_fail_status'] == 'pass') or self.options.qc_all): 
 						qc_json = self.QC_2Runs(run1, run2, pref, pref)
 						self.update_3x3_runs_status(run1, run2, qc_json)
 
@@ -356,7 +366,7 @@ class QC_Sample:
 		qc_json_data = {}
 		if os.path.isfile(qc_json):
 			qc_json_data = json.load(open(qc_json))
-	
+
 		# run1 vs run2:
 		run1vsrun2 = '%svs%s'%(run1_json['run_name'], run2_json['run_name'])
 
@@ -698,8 +708,8 @@ if __name__ == '__main__':
 	#parser.add_option('-m', '--merge', dest='merge', help="Merge the runs of a sample. Currently Automatic 'pass/fail' status is not updated, so this script must be run again after cutoffs are figured out.")
 	parser.add_option('-q', '--qc_all', dest='qc_all', action='store_true', help="Generate the 3x3 tables for all run comparisons, even if they fail.")
 	parser.add_option('-p', '--pass_fail', dest='pass_fail', action='store_true', help="Overwrite the 'pass/fail' status of each run according to the cutoffs found in the json file. Normally this step is skipped if all runs have finished the QC process, but this option will overwrite the 'pass/fail' status found.")
+	parser.add_option('-r', '--recalc_3x3_tables', dest='recalc_3x3_tables', action='store_true', help="recalculate the 3x3 tables (original use was for the new GT cutoffs")
 	parser.add_option('-u', '--update_cutoffs', dest='update_cutoffs', help="Change the cutoffs found in the JSON file using an example json file with the corrected cutoffs. Will be done before anything else in the script.")
-
 	(options, args) = parser.parse_args()
 
 	# check to make sure the inputs are valid
@@ -722,6 +732,10 @@ if __name__ == '__main__':
 		# if the update_json flag is specified, then update the cutoffs found in the normal json file.
 		if options.update_cutoffs:
 			qc_sample.update_cutoffs()
+
+		# if the recalc_3x3_tables flag is specified, then rearrange the results_QC.json file so that the 3x3 tables will be recalculated.
+		if options.recalc_3x3_tables:
+			qc_sample.recalc_3x3_tables()
 
 		# QC and merge all of the runs
 		qc_sample.QC_merge_runs()
