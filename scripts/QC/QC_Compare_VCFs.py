@@ -114,6 +114,12 @@ class Compare_VCFs:
 		
 		self.change_counts['run1_type'] = self.getRunType(json1, self.WT1_Cutoff)
 		self.change_counts['run2_type'] = self.getRunType(json2, self.WT2_Cutoff)
+
+		# also get the run number
+		if 'run_num' in json1:
+			self.change_counts['run1_num'] = json1['run_num']
+		if 'run_num' in json2:
+			self.change_counts['run2_num'] = json2['run_num']
 		
 		# Get the error_counts
 		if self.change_counts['run1_type'] == "normal" and self.change_counts['run2_type'] == 'tumor':

@@ -107,7 +107,7 @@ class XLSX_Writer():
 					if metrics[key] != "":
 						cell1 = xl_rowcol_to_cell(row, col-2)
 						cell2 = xl_rowcol_to_cell(row, col-1)
-						self.QCsheet.write_formula(row, col, "=%s-%s"%(cell1, cell2, cell1), self.formats[write_format[1:]])
+						self.QCsheet.write_formula(row, col, "=%s-%s"%(cell1, cell2), self.formats[write_format[1:]])
 				elif re.search("num_format", write_format):
 					if not isinstance(metrics[key], int) and not isinstance(metrics[key], float):
 						self.QCsheet.write_number(row, col, int(metrics[key].replace(',','')), self.formats[write_format])
@@ -494,8 +494,13 @@ class XLSX_Writer():
 		col2 = start_col
 		# loop through the different comparisons of the given data_type and comparison type.
 		for runs_compared, table_values in sorted(qc_comparisons.iteritems()):
-			run1_num = int(runs_compared.split('vs')[0][-1])
-			run2_num = int(runs_compared.split('vs')[1][-1])
+			# get the run number
+			if 'run1_num' in table_values:
+				run1_num = int(table_values['run1_num'])
+				run2_num = int(table_values['run2_num'])
+			else:
+				run1_num = int(runs_compared.split('vs')[0][-1])
+				run2_num = int(runs_compared.split('vs')[1][-1])
 			# if the run types match, then traingulate by each row being a new run2_num, and each col being a new run1_num
 			if table_values['run1_type'] == table_values['run2_type']:
 				row2 = start_row + (run2_num-2)*11
