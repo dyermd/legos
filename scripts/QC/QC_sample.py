@@ -66,7 +66,7 @@ class QC_Sample:
 			# Use the sample_status here to not re-run the QC and to not overwrite run status. The 'sample_status' should be reset to 'pushed' when new runs are pushed..
 			#if self.sample_json['sample_status'] != 'pending_merge' and self.sample_json['sample_status'] != 'pending_3x3_review' and self.sample_json['sample_status'] != 'merged':
 			# if the user specified the '--pass_fail' option, then run this part still
-			if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail:
+			if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail or self.options.qc_all or self.options.recalc_3x3_tables:
 				# QC the normal runs with each other
 				self.QC_runs(self.sample_json['runs'])
 	
@@ -96,7 +96,7 @@ class QC_Sample:
 				# Use the sample_status here to not re-run the QC and to not overwrite run status. The 'sample_status' should be reset to 'pushed' when new runs are pushed..
 				#if self.sample_json['sample_status'] != 'pending_merge' and self.sample_json['sample_status'] != 'pending_3x3_review' and self.sample_json['sample_status'] != 'merged':
 				# if the user specified the '--pass_fail' option, then run this part still
-				if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail:
+				if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail or self.options.qc_all or self.options.recalc_3x3_tables:
 					# QC the normal or tumor runs with each other
 					self.QC_runs(normal_runs, 'normal_')
 					self.QC_runs(tumor_runs, 'tumor_')
