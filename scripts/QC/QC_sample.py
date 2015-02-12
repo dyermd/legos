@@ -228,7 +228,7 @@ class QC_Sample:
 				normal_json = json.load(open(normal_run))
 				tumor_json = json.load(open(tumor_run))
 				# Only QC the runs that pass the single run QC metrics.
-				if normal_json['pass_fail_status'] == 'pass' and tumor_json['pass_fail_status'] == 'pass': 
+				if (normal_json['pass_fail_status'] == 'pass' and tumor_json['pass_fail_status'] == 'pass') or self.options.qc_all: 
 					qc_json = self.QC_2Runs(normal_run, tumor_run, 'normal_', 'tumor_')
 					self.update_3x3_runs_status(normal_run, tumor_run, qc_json)
 
