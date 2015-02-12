@@ -107,7 +107,7 @@ class XLSX_Writer():
 					if metrics[key] != "":
 						cell1 = xl_rowcol_to_cell(row, col-2)
 						cell2 = xl_rowcol_to_cell(row, col-1)
-						self.QCsheet.write_formula(row, col, "=(%s-%s)/%s"%(cell1, cell2, cell1), self.formats[write_format[1:]])
+						self.QCsheet.write_formula(row, col, "=%s-%s"%(cell1, cell2, cell1), self.formats[write_format[1:]])
 				elif re.search("num_format", write_format):
 					if not isinstance(metrics[key], int) and not isinstance(metrics[key], float):
 						self.QCsheet.write_number(row, col, int(metrics[key].replace(',','')), self.formats[write_format])
@@ -200,7 +200,7 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp -10 (considering fwd/rev read split)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
 		col += 1
-		self.QCsheet.write(0,col, "ABS (%covered at bp(10) - bp(n-10))/bp(10)", self.formats['header_format'])
+		self.QCsheet.write(0,col, "ABS %covered at bp(10) - bp(n-10)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,13, self.formats['center'])
 		col += 1
 	#	self.QCsheet.write(0,col, "total number of bases covered at 30x (the # of bases covered in the 'covered_bases region' region.)", self.formats['header_format'])
