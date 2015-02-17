@@ -244,13 +244,12 @@ class QC_Sample:
 					pending_runs.append(run)
 				# only the runs that pass both of these cutoffs will be used to merge
 				elif run_json['pass_fail_status'] == 'pass':
-					if len(runs) > 1 and ('pass_fail_3x3_status' in run_json and run_json['pass_fail_3x3_status'] == 'pending'):
-						pending_runs.append(run)
-					elif 'pass_fail_3x3_status' in run_json and run_json['pass_fail_3x3_status'] == 'pass':
+					if len(runs) > 1:
+						if 'pass_fail_3x3_status' in run_json and (run_json['pass_fail_3x3_status'] == 'pending' or run_json['pass_fail_3x3_status'] == 'pass'):
+							passing_runs.append(run)
+					# if there is only 1 run, then it won't have a pass_fail_3x3_status. it passes.
+					else:
 						passing_runs.append(run)
-					# not sure why this was here. If the run doesn't pass the 3x3_status, it shouldnt go into merging
-					#else:
-					#	passing_runs.append(run)
 			except ValueError:
 				pass
 		return pending_runs, passing_runs
