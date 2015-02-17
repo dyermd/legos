@@ -327,6 +327,7 @@ class QC_Sample:
 				sys.stderr.write("%s QC_getRunInfo.sh had an error!!\n"%run)
 				self.no_errors = False
 		# if the median read length was not gathered from the report PDF, or if this is a merged bam file, then calculate the median read length
+		# TODO calculate the mean read length as well.
 		new_run_json = json.load(open(run))
 		if 'run_data' in new_run_json and ('median_read_length' not in new_run_json['run_data'] or str(new_run_json['run_data']['median_read_length']) == ""):
 			#print "Gathering 'median_read_length'"

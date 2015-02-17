@@ -142,6 +142,7 @@ class Compare_VCFs:
 		if not os.path.isfile(options.json_out):
 			# If the QC json file doesn't exist yet, then make it.
 			json_out = {'sample': json1['sample']}
+			json_out = {'sample_name': json1['sample']}
 		else:
 			# add this comparisons QC metrics to the sample's QC json file.
 			json_out = json.load(open(options.json_out))
@@ -172,6 +173,8 @@ class Compare_VCFs:
 		#	self.change_counts['CDS'] = True
 		#	# the key will be CDS:Run1vsRun2, and the value will be a dictionary containing the error metrics for these two run's comparisons
 		#	json_out['QC_comparisons']['CDS:' + json1['name'] + 'vs' + json2['name']] = self.change_counts
+
+		json_out['json_type'] = 'QC_comparisons'
 		
 		# dump the json out file
 		with open(options.json_out, 'w') as newJSONFile:

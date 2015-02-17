@@ -151,6 +151,9 @@ class XLSX_Writer():
 		self.QCsheet.write(0,col, "gDNA isolation date", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,10, self.formats['center'])
 		col += 1
+		self.QCsheet.write(0,col, "gDNA concentration (ng/ul)", self.formats['header_format'])
+		self.QCsheet.set_column(col,col,10, self.formats['center'])
+		col += 1
 		self.QCsheet.write(0,col, "Library concentration (ng/ul)", self.formats['header_format'])
 		self.QCsheet.set_column(col,col,None, self.formats['center'])
 		col += 1
@@ -337,6 +340,7 @@ class XLSX_Writer():
 				else:
 					col += self._check_to_write(row, col, 'run_num', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'gDNA_isolation', "" + azure, metrics)
+				col += self._check_to_write(row, col, 'gDNA_conc', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
 				col += self._check_to_write(row, col, 'run_date', "" + azure, metrics)
