@@ -248,8 +248,9 @@ class QC_Sample:
 						pending_runs.append(run)
 					elif 'pass_fail_3x3_status' in run_json and run_json['pass_fail_3x3_status'] == 'pass':
 						passing_runs.append(run)
-					else:
-						passing_runs.append(run)
+					# not sure why this was here. If the run doesn't pass the 3x3_status, it shouldnt go into merging
+					#else:
+					#	passing_runs.append(run)
 			except ValueError:
 				pass
 		return pending_runs, passing_runs
