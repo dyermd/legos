@@ -541,6 +541,7 @@ else
 		# Move the depths to the Output dir in case the script is interrupted in the middle of running samtools
 		mv  ${TEMP_DIR}/Both_Runs_${CHR}depths ${OUTPUT_DIR}
 
+	fi
 	# Use awk to get the total_eligible_bases by getting only the base positions from both samtools depth outputs that have greater than the cutoff depth.
 	total_eligible_bases=`awk -v cutoff1=$DEPTH_CUTOFF1 -v cutoff2=$DEPTH_CUTOFF2 '{ if ($3 >= cutoff1 && $4 >= cutoff2) printf "."}' ${OUTPUT_DIR}/Both_Runs_${CHR}depths | wc -c`
 fi
