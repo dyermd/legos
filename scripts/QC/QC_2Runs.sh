@@ -46,6 +46,7 @@ All options up to --gt_cutoffs are required.
 	-chr | --subset_chr <chr#> (The chromosome specified here (for example: chr1) will be used to subset the VCF and BAM files)
 	-cl | --cleanup (If calling QC_getRunInfo.sh after this script, the PRTIM.bam is needed so DO NOT CALL CLEANUP. Delete temp_files used to create the two Output VCF files, the PTRIM.bam the chr_subset bam files if they were created.)
 	-cle | --cleanup_everything (Option not yet implemented: Delete everything but the log and the matched_variants.csv)
+	-B | --bases <total_eligible_bases> <total_possible_bases> (If these total bases have already been calculated you can include them here)
 EOF
 exit 8
 }
@@ -338,6 +339,13 @@ do
 			RUNNING="$RUNNING --subset_chr: $2 "
 			shift 2
 			;;
+		-B | --bases) 
+			BASES="True"
+			total_eligible_bases=$2
+			total_possible_bases=$3
+			RUNNING="$RUNNING --bases: total_eligible_bases: $2, total_possible_bases: $3 "
+			shift 3
+			;;
 		-cl | --cleanup)
 			CLEANUP="True"
 			RUNNING="$RUNNING --cleanup "
@@ -394,146 +402,148 @@ fi
 #if [ "`grep $qc_name $JSON_OUT 2>/dev/null`" ]; then
 #	echo "	$OUTPUT_DIR has already been QCd. Skipping QC_2Runs.sh"
 #else
-# If the VCFs and depths have already been generated, then skip this step
-# cannot have this check because the variable $total_possible_bases is needed
-#if [ "`find ${OUTPUT_DIR}/VCF1${CHR}_Final.vcf -type f 2>/dev/null`" -a "`find ${OUTPUT_DIR}/VCF2${CHR}_Final.vcf -type f 2>/dev/null`" -a "`find ${OUTPUT_DIR}/Both_Runs_${CHR}depths -maxdepth 0 -type f 2>/dev/null`" ]; then
-#	echo "	$OUTPUT_DIR has already been QCd. Skipping QC_2Runs.sh"
-#else
-echo "	$OUTPUT_DIR Creating QC tables at `date`"
-#echo "For progress and results, see $log"
-echo "Creating QC tables for $OUTPUT_DIR at `date`" >>$log
-echo "----------------------------------------------" >>$log
-
-# this function finds the bam file for each run and subsets out the chr if specified 
-# The RUN1_BAM and RUN2_BAM variables are set up in this function
-setupBAMs $RUN1_DIR $RUN2_DIR
-
-# this function finds the vcf files and subsets out the chr if specified.
-setupVCF $RUN1_DIR 1
-setupVCF $RUN2_DIR 2
-	
-# Get the unique and common variants to each vcf file.
-# I'm not sure if I actually have to do this
-echo "--- vcf-isec (column name warnings are fine) ---" >>${log}
-vcf-isec -f -c ${TEMP_DIR}/Run1.vcf.gz ${TEMP_DIR}/Run2.vcf.gz > ${TEMP_DIR}/VCF1_unique.vcf 2>>${log}
-vcf-isec -f -c ${TEMP_DIR}/Run2.vcf.gz ${TEMP_DIR}/Run1.vcf.gz > ${TEMP_DIR}/VCF2_unique.vcf 2>>${log}
-vcf-isec -f ${TEMP_DIR}/Run1.vcf.gz ${TEMP_DIR}/Run2.vcf.gz > ${TEMP_DIR}/VCF1_VCF2_common.vcf 2>>${log}
-
-# Merge the two compressed VCF files and remove the duplicates
-echo "--- vcf-merge ---" >>${log}
-vcf-merge ${TEMP_DIR}/Run1.vcf.gz ${TEMP_DIR}/Run2.vcf.gz --remove-duplicates > ${TEMP_DIR}/merged.vcf 2>>${log}
-
-# Now setup the BED files
-bed_name=`basename $BED`
-#bedtools intersect -a ${TEMP_DIR}/${intersected_bed} -b ${BED} -u -f 0.99 > ${TEMP_DIR}/intersect_${bed_name} 2>>$log
-intersected_bed="$BED"
-
-# interstect the subset.bed file with the specified subset bed files
-# if GET_CDS_DEPTHS is true, then the cds bed will not be subset out here so that all of the variants will be available, and  samtools depth can be run twice.
-if [ "$CDS_BED" != "" -a "$GET_CDS_DEPTHS" != "True" ]; then
-	cds_name=`basename $CDS_BED`
-	# -f .99 option is not used here because the begin and end pos of the CDS region will not match up with the project bed file (it has intronic regions)
-	bedtools intersect -a $BED -b ${CDS_BED} > ${TEMP_DIR}/intersect_${cds_name} 2>>$log
-	intersected_bed="${TEMP_DIR}/intersect_${cds_name}"
-fi
-if [ "$SUBSET_BED" != "" ]; then
-	subset_name=`basename $SUBSET_BED`
-	bedtools intersect -a ${intersected_bed} -b ${SUBSET_BED} -u -f 0.99 > ${TEMP_DIR}/intersect2_${subset_name} 2>>$log
-	intersected_bed="${TEMP_DIR}/intersect2_${subset_name}"
-fi
-
-# This fuction gets only the chr and pos from the project bed file to calculate the total possible bases. (Also to save time and make the output better for bedtools coverage).
-setupBED ${intersected_bed} # The new bed file is also stored in intersected_bed
-# Calculate the total_possible_bases in the intersected bed file
-total_possible_bases=`awk -F'\t' 'BEGIN{SUM=0}{ SUM+=$3-$2 }END{print SUM}' $intersected_bed`
-
-# Function to keep only the amplicons that have depth coverage >= AMP COV CUTOFF.
-subset_low_cov $RUN1_DIR 1
-subset_low_cov $RUN2_DIR 2
-
-echo "--- Creating subset bed files (where amp cov > $AMP_COV_CUTOFF) ---" >>${log}
-# Now intersect the two subset bed files output by the subset_low_cov function
-bedtools intersect -a ${TEMP_DIR}/run1_subset.bed -b ${TEMP_DIR}/run2_subset.bed -u -f 0.99 > ${TEMP_DIR}/low_cov_subset.bed 2>>$log
-
-bed_name=`basename $intersected_bed`
-# Intersect the low_cov_subset.bed with the first bed specified. This shouldn't normally be needed, but it is a good precaution.
-bedtools intersect -a ${TEMP_DIR}/low_cov_subset.bed -b ${intersected_bed} -u -f 0.99 > ${TEMP_DIR}/subset_${bed_name} 2>>$log
-intersected_bed="${TEMP_DIR}/subset_${bed_name}"
-
-# Only run this step if the Final VCF files have not already been created
-if [ ! "`find ${OUTPUT_DIR}/VCF1${CHR}_Final.vcf -type f 2>/dev/null`" -o ! "`find ${OUTPUT_DIR}/VCF2${CHR}_Final.vcf -type f 2>/dev/null`" ]; then
-	# And then intersect that bed file with the merged vcf file to get only the variants that have > 30x coverage and that are found in the bed files specified.
-	bedtools intersect -a ${TEMP_DIR}/merged.vcf -b ${intersected_bed} > ${TEMP_DIR}/merged_intersect.vcf 2>>$log
-	
-	# Filtering the Hotspot before vs after did not make a difference. Will filter before.
-	# Remove the variants that have a multi-allelic call (i.e. A,G). Bonnie thinks they are a sequencing artifact.
-	# if FAO + FRO is < Depth_Cutoff, that variant is removed
-	echo "--- Filtering Variants (multi-allelic calls, and where FAO+FRO is < $DEPTH_CUTOFF1 in VCF1 and < $DEPTH_CUTOFF2 in VCF2 ---" >>${log}
-	python ${QC_SCRIPTS}/QC_Filter.py ${TEMP_DIR}/merged_intersect.vcf ${TEMP_DIR}/filtered_merged_intersect.vcf --merged $DEPTH_CUTOFF1 $DEPTH_CUTOFF2 >> $log 2>&1
-	if [ "$?" != "0" ]
-	then
-		echo "ERROR: $OUTPUT_DIR had a problem filtering variants with QC_Filter.py... See $log for details" 1>&2
-		exit 1
-	fi
-	
-	echo "--- Creating the hotspot file ---" >>${log}
-	# Create the hotspot file that has the variants for both of the runs.
-	tvcutils prepare_hotspots -v ${TEMP_DIR}/filtered_merged_intersect.vcf -o ${TEMP_DIR}/final_Hotspot.vcf -r $REF_FASTA -s on -a on >>$log
-	
-	bgzip -c ${TEMP_DIR}/final_Hotspot.vcf > ${TEMP_DIR}/final_Hotspot.vcf.gz
-	tabix -p vcf ${TEMP_DIR}/final_Hotspot.vcf.gz
-
-	#The Hotspot file should be good to go now. Run TVC on the two original BAM files now using the awesome Hotspot file we created!
-	echo "Running TVC using the generated hotspot file" >>$log
+# If the VCFs and depths have already been generated, then skip this step IF the variable $total_possible_bases and total_eligible_bases are passed in 
+if [ "`find ${OUTPUT_DIR}/VCF1${CHR}_Final.vcf -type f 2>/dev/null`" -a \
+	"`find ${OUTPUT_DIR}/VCF2${CHR}_Final.vcf -type f 2>/dev/null`" -a \
+	"`find ${OUTPUT_DIR}/Both_Runs_${CHR}depths -maxdepth 0 -type f 2>/dev/null`" -a \
+	"$BASES" == "True" ]; then
+	echo "	$OUTPUT_DIR has already been QCd. Skipping QC_2Runs.sh"
+else
+	echo "	$OUTPUT_DIR Creating QC tables at `date`"
+	#echo "For progress and results, see $log"
+	echo "Creating QC tables for $OUTPUT_DIR at `date`" >>$log
 	echo "----------------------------------------------" >>$log
-	# if CHR is nothing, then the PTRIM.bam will be written to the normal run's dir
-	runTVC $RUN1_BAM $JSON_PARAS1 1${CHR} ${RUN1_DIR}/${CHR}/${CHR}PTRIM.bam
-	runTVC $RUN2_BAM $JSON_PARAS2 2${CHR} ${RUN2_DIR}/${CHR}/${CHR}PTRIM.bam
-	# after running the TVC result above, the TSVC_variants.vcf file created will include not only hotspot calls, but pretty much everything we filtered out prior to generating the final hotspot file. 
-	#because TVC is actually run twice (1) as though there were no hotspot files defined (2) only using hotspot file. The final TSVC_variants.vcf reported is a combination of (1) and (2)  
-	
-	# wait for TVC to finish. Exit if TVC has a problem
-	waitForJobsToFinish "TVC ${CHR}"
 
-	# Now, intersect the variants to the hotspot file used as input in generating the final round of TSVC_variants.vcf. 
-	# This way, we will match the no of variants in both runs and we will be able to proceed with generating the QC table (if the no of variants differed in the 2 runs, we would not be able to compare apples to apples)
-	# get only the variants that are listed in the Hotspot file
-	echo "--- vcf-isec to get only variants listed in the Hotspot file (column name warnings are fine) ---" >>${log}
-	vcf-isec -f ${TEMP_DIR}/tvc1${CHR}_out/TSVC_variants.vcf.gz ${TEMP_DIR}/final_Hotspot.vcf.gz > ${TEMP_DIR}/VCF1_Intersect_Hotspot.vcf 2>>${log}
-	vcf-isec -f ${TEMP_DIR}/tvc2${CHR}_out/TSVC_variants.vcf.gz ${TEMP_DIR}/final_Hotspot.vcf.gz > ${TEMP_DIR}/VCF2_Intersect_Hotspot.vcf 2>>${log}
-	
-	# Finally, if the user specified a subset chr, put that in the name of the final VCF file.
-	VCF1_FINAL="${OUTPUT_DIR}/VCF1${CHR}_Final.vcf"
-	VCF2_FINAL="${OUTPUT_DIR}/VCF2${CHR}_Final.vcf"
-	echo "--- removing duplicates entries---" >>${log}
-	# I keep trying to think of ways to shortcut around having to do this extra filtering, but Ozlem is doing it all
-	# because there were special cases where these steps were necessary. So I'll keep them.
-	# We need to remove the duplicate entries again.
-	python ${QC_SCRIPTS}/QC_Filter.py ${TEMP_DIR}/VCF1_Intersect_Hotspot.vcf $VCF1_FINAL --single $DEPTH_CUTOFF1 >>$log 2>&1
-	python ${QC_SCRIPTS}/QC_Filter.py ${TEMP_DIR}/VCF2_Intersect_Hotspot.vcf $VCF2_FINAL --single $DEPTH_CUTOFF2 >>$log 2>&1
+	# this function finds the bam file for each run and subsets out the chr if specified 
+	# The RUN1_BAM and RUN2_BAM variables are set up in this function
+	setupBAMs $RUN1_DIR $RUN2_DIR
+
+	# this function finds the vcf files and subsets out the chr if specified.
+	setupVCF $RUN1_DIR 1
+	setupVCF $RUN2_DIR 2
+		
+	# Get the unique and common variants to each vcf file.
+	# I'm not sure if I actually have to do this
+	echo "--- vcf-isec (column name warnings are fine) ---" >>${log}
+	vcf-isec -f -c ${TEMP_DIR}/Run1.vcf.gz ${TEMP_DIR}/Run2.vcf.gz > ${TEMP_DIR}/VCF1_unique.vcf 2>>${log}
+	vcf-isec -f -c ${TEMP_DIR}/Run2.vcf.gz ${TEMP_DIR}/Run1.vcf.gz > ${TEMP_DIR}/VCF2_unique.vcf 2>>${log}
+	vcf-isec -f ${TEMP_DIR}/Run1.vcf.gz ${TEMP_DIR}/Run2.vcf.gz > ${TEMP_DIR}/VCF1_VCF2_common.vcf 2>>${log}
+
+	# Merge the two compressed VCF files and remove the duplicates
+	echo "--- vcf-merge ---" >>${log}
+	vcf-merge ${TEMP_DIR}/Run1.vcf.gz ${TEMP_DIR}/Run2.vcf.gz --remove-duplicates > ${TEMP_DIR}/merged.vcf 2>>${log}
+
+	# Now setup the BED files
+	bed_name=`basename $BED`
+	#bedtools intersect -a ${TEMP_DIR}/${intersected_bed} -b ${BED} -u -f 0.99 > ${TEMP_DIR}/intersect_${bed_name} 2>>$log
+	intersected_bed="$BED"
+
+	# interstect the subset.bed file with the specified subset bed files
+	# if GET_CDS_DEPTHS is true, then the cds bed will not be subset out here so that all of the variants will be available, and  samtools depth can be run twice.
+	if [ "$CDS_BED" != "" -a "$GET_CDS_DEPTHS" != "True" ]; then
+		cds_name=`basename $CDS_BED`
+		# -f .99 option is not used here because the begin and end pos of the CDS region will not match up with the project bed file (it has intronic regions)
+		bedtools intersect -a $BED -b ${CDS_BED} > ${TEMP_DIR}/intersect_${cds_name} 2>>$log
+		intersected_bed="${TEMP_DIR}/intersect_${cds_name}"
+	fi
+	if [ "$SUBSET_BED" != "" ]; then
+		subset_name=`basename $SUBSET_BED`
+		bedtools intersect -a ${intersected_bed} -b ${SUBSET_BED} -u -f 0.99 > ${TEMP_DIR}/intersect2_${subset_name} 2>>$log
+		intersected_bed="${TEMP_DIR}/intersect2_${subset_name}"
+	fi
+
+	# This fuction gets only the chr and pos from the project bed file to calculate the total possible bases. (Also to save time and make the output better for bedtools coverage).
+	setupBED ${intersected_bed} # The new bed file is also stored in intersected_bed
+	# Calculate the total_possible_bases in the intersected bed file
+	total_possible_bases=`awk -F'\t' 'BEGIN{SUM=0}{ SUM+=$3-$2 }END{print SUM}' $intersected_bed`
+
+	# Function to keep only the amplicons that have depth coverage >= AMP COV CUTOFF.
+	subset_low_cov $RUN1_DIR 1
+	subset_low_cov $RUN2_DIR 2
+
+	echo "--- Creating subset bed files (where amp cov > $AMP_COV_CUTOFF) ---" >>${log}
+	# Now intersect the two subset bed files output by the subset_low_cov function
+	bedtools intersect -a ${TEMP_DIR}/run1_subset.bed -b ${TEMP_DIR}/run2_subset.bed -u -f 0.99 > ${TEMP_DIR}/low_cov_subset.bed 2>>$log
+
+	bed_name=`basename $intersected_bed`
+	# Intersect the low_cov_subset.bed with the first bed specified. This shouldn't normally be needed, but it is a good precaution.
+	bedtools intersect -a ${TEMP_DIR}/low_cov_subset.bed -b ${intersected_bed} -u -f 0.99 > ${TEMP_DIR}/subset_${bed_name} 2>>$log
+	intersected_bed="${TEMP_DIR}/subset_${bed_name}"
+
+	# Only run this step if the Final VCF files have not already been created
+	if [ ! "`find ${OUTPUT_DIR}/VCF1${CHR}_Final.vcf -type f 2>/dev/null`" -o ! "`find ${OUTPUT_DIR}/VCF2${CHR}_Final.vcf -type f 2>/dev/null`" ]; then
+		# And then intersect that bed file with the merged vcf file to get only the variants that have > 30x coverage and that are found in the bed files specified.
+		bedtools intersect -a ${TEMP_DIR}/merged.vcf -b ${intersected_bed} > ${TEMP_DIR}/merged_intersect.vcf 2>>$log
+		
+		# Filtering the Hotspot before vs after did not make a difference. Will filter before.
+		# Remove the variants that have a multi-allelic call (i.e. A,G). Bonnie thinks they are a sequencing artifact.
+		# if FAO + FRO is < Depth_Cutoff, that variant is removed
+		echo "--- Filtering Variants (multi-allelic calls, and where FAO+FRO is < $DEPTH_CUTOFF1 in VCF1 and < $DEPTH_CUTOFF2 in VCF2 ---" >>${log}
+		python ${QC_SCRIPTS}/QC_Filter.py ${TEMP_DIR}/merged_intersect.vcf ${TEMP_DIR}/filtered_merged_intersect.vcf --merged $DEPTH_CUTOFF1 $DEPTH_CUTOFF2 >> $log 2>&1
+		if [ "$?" != "0" ]
+		then
+			echo "ERROR: $OUTPUT_DIR had a problem filtering variants with QC_Filter.py... See $log for details" 1>&2
+			exit 1
+		fi
+		
+		echo "--- Creating the hotspot file ---" >>${log}
+		# Create the hotspot file that has the variants for both of the runs.
+		tvcutils prepare_hotspots -v ${TEMP_DIR}/filtered_merged_intersect.vcf -o ${TEMP_DIR}/final_Hotspot.vcf -r $REF_FASTA -s on -a on >>$log
+		
+		bgzip -c ${TEMP_DIR}/final_Hotspot.vcf > ${TEMP_DIR}/final_Hotspot.vcf.gz
+		tabix -p vcf ${TEMP_DIR}/final_Hotspot.vcf.gz
+
+		#The Hotspot file should be good to go now. Run TVC on the two original BAM files now using the awesome Hotspot file we created!
+		echo "Running TVC using the generated hotspot file" >>$log
+		echo "----------------------------------------------" >>$log
+		# if CHR is nothing, then the PTRIM.bam will be written to the normal run's dir
+		runTVC $RUN1_BAM $JSON_PARAS1 1${CHR} ${RUN1_DIR}/${CHR}/${CHR}PTRIM.bam
+		runTVC $RUN2_BAM $JSON_PARAS2 2${CHR} ${RUN2_DIR}/${CHR}/${CHR}PTRIM.bam
+		# after running the TVC result above, the TSVC_variants.vcf file created will include not only hotspot calls, but pretty much everything we filtered out prior to generating the final hotspot file. 
+		#because TVC is actually run twice (1) as though there were no hotspot files defined (2) only using hotspot file. The final TSVC_variants.vcf reported is a combination of (1) and (2)  
+		
+		# wait for TVC to finish. Exit if TVC has a problem
+		waitForJobsToFinish "TVC ${CHR}"
+
+		# Now, intersect the variants to the hotspot file used as input in generating the final round of TSVC_variants.vcf. 
+		# This way, we will match the no of variants in both runs and we will be able to proceed with generating the QC table (if the no of variants differed in the 2 runs, we would not be able to compare apples to apples)
+		# get only the variants that are listed in the Hotspot file
+		echo "--- vcf-isec to get only variants listed in the Hotspot file (column name warnings are fine) ---" >>${log}
+		vcf-isec -f ${TEMP_DIR}/tvc1${CHR}_out/TSVC_variants.vcf.gz ${TEMP_DIR}/final_Hotspot.vcf.gz > ${TEMP_DIR}/VCF1_Intersect_Hotspot.vcf 2>>${log}
+		vcf-isec -f ${TEMP_DIR}/tvc2${CHR}_out/TSVC_variants.vcf.gz ${TEMP_DIR}/final_Hotspot.vcf.gz > ${TEMP_DIR}/VCF2_Intersect_Hotspot.vcf 2>>${log}
+		
+		# Finally, if the user specified a subset chr, put that in the name of the final VCF file.
+		VCF1_FINAL="${OUTPUT_DIR}/VCF1${CHR}_Final.vcf"
+		VCF2_FINAL="${OUTPUT_DIR}/VCF2${CHR}_Final.vcf"
+		echo "--- removing duplicates entries---" >>${log}
+		# I keep trying to think of ways to shortcut around having to do this extra filtering, but Ozlem is doing it all
+		# because there were special cases where these steps were necessary. So I'll keep them.
+		# We need to remove the duplicate entries again.
+		python ${QC_SCRIPTS}/QC_Filter.py ${TEMP_DIR}/VCF1_Intersect_Hotspot.vcf $VCF1_FINAL --single $DEPTH_CUTOFF1 >>$log 2>&1
+		python ${QC_SCRIPTS}/QC_Filter.py ${TEMP_DIR}/VCF2_Intersect_Hotspot.vcf $VCF2_FINAL --single $DEPTH_CUTOFF2 >>$log 2>&1
+	fi
+
+	# If the depths have already been generated, then skip this step
+	if [ ! "`find ${OUTPUT_DIR}/Both_Runs_${CHR}depths -maxdepth 0 -type f 2>/dev/null`" ]; then
+		# get Depths. Not needed for hotspot creation and such, but it will be used to find the total # of eligible bases later on.
+		echo "${RUN1_DIR}/${CHR}/${CHR}PTRIM.bam" > ${TEMP_DIR}/depths_files 
+		echo "${RUN2_DIR}/${CHR}/${CHR}PTRIM.bam" >> ${TEMP_DIR}/depths_files 
+
+		# Use samtools depth to get the depths of both Run's ptrim.bam files at every position listed in the intersected_bed.
+		# -f option requires a file with a bam file on each line in that file
+		samtools depth \
+			-f ${TEMP_DIR}/depths_files \
+			-b $intersected_bed \
+			> ${TEMP_DIR}/Both_Runs_${CHR}depths \
+			&
+
+		waitForJobsToFinish "samtools depths ${CHR}"
+		# Move the depths to the Output dir in case the script is interrupted in the middle of running samtools
+		mv  ${TEMP_DIR}/Both_Runs_${CHR}depths ${OUTPUT_DIR}
+
+	# Use awk to get the total_eligible_bases by getting only the base positions from both samtools depth outputs that have greater than the cutoff depth.
+	total_eligible_bases=`awk -v cutoff1=$DEPTH_CUTOFF1 -v cutoff2=$DEPTH_CUTOFF2 '{ if ($3 >= cutoff1 && $4 >= cutoff2) printf "."}' ${OUTPUT_DIR}/Both_Runs_${CHR}depths | wc -c`
 fi
-
-# If the depths have already been generated, then skip this step
-if [ ! "`find ${OUTPUT_DIR}/Both_Runs_${CHR}depths -maxdepth 0 -type f 2>/dev/null`" ]; then
-	# get Depths. Not needed for hotspot creation and such, but it will be used to find the total # of eligible bases later on.
-	echo "${RUN1_DIR}/${CHR}/${CHR}PTRIM.bam" > ${TEMP_DIR}/depths_files 
-	echo "${RUN2_DIR}/${CHR}/${CHR}PTRIM.bam" >> ${TEMP_DIR}/depths_files 
-
-	# Use samtools depth to get the depths of both Run's ptrim.bam files at every position listed in the intersected_bed.
-	# -f option requires a file with a bam file on each line in that file
-	samtools depth \
-		-f ${TEMP_DIR}/depths_files \
-		-b $intersected_bed \
-		> ${TEMP_DIR}/Both_Runs_${CHR}depths \
-		&
-
-	waitForJobsToFinish "samtools depths ${CHR}"
-	# Move the depths to the Output dir in case the script is interrupted in the middle of running samtools
-	mv  ${TEMP_DIR}/Both_Runs_${CHR}depths ${OUTPUT_DIR}
-fi
-
-# Use awk to get the total_eligible_bases by getting only the base positions from both samtools depth outputs that have greater than the cutoff depth.
-total_eligible_bases=`awk -v cutoff1=$DEPTH_CUTOFF1 -v cutoff2=$DEPTH_CUTOFF2 '{ if ($3 >= cutoff1 && $4 >= cutoff2) printf "."}' ${OUTPUT_DIR}/Both_Runs_${CHR}depths | wc -c`
 
 # This script takes the two VCF files generated from running TVC using the same hotspot file, matches them and outputs the info to the csv and the json_out file.
  # total_possible_bases is calculated after the  setupBed function.

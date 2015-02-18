@@ -317,8 +317,8 @@ class QC_Sample:
 					"--ptrim_json %s/PTRIM.bam "%run_json['run_folder']
 			#if [ "$CDS_BED" != "" ]; then
 			#	qcgetruninfo="$qcgetruninfo --cds_bed $CDS_BED "
-			# QC_getRunInfo's will run the pool dropout script 
-			if self.sample_json['analysis']['settings']['pool_dropout'] == True:
+			# QC_getRunInfo's will run the pool dropout script if it hasn't already been calculated
+			if self.sample_json['analysis']['settings']['pool_dropout'] == True and ('run_data' not in run_json or 'pools_total' not in run_json['run_data']):
 				qcgetruninfo += "--pool_dropout "
 			# cleanup will be done at the end of this script
 			#run the qcgetruninfo command
@@ -407,6 +407,14 @@ class QC_Sample:
 				if chromosome != "all":
 					qc2runs += "--subset_chr %s "%chromosome
 	
+				# if the recalc option is specified, we might be able to pass in the total eligible and possible bases because those shouldn't change (unless the amplicon cutoff is changed from 30x).
+				if self.options.recalc_3x3_tables and 'old_GTs' in qc_json_data and 'QC_comparisons' in qc_json_data['old_GTs'] and \
+					chromosome in qc_json_data['old_GTs']['QC_comparisons'] and comp_type in qc_json_data['old_GTs']['QC_comparisons'][chromosome] and \
+					run1vsrun2 in qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]:
+					# get the bases and add them to the command
+					# recalculate the total_possible_bases
+					total_possible_bases = int(1 / (qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['perc_avail_bases'] / qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['total_eligible_bases']))
+					qc2runs += "--bases %s %s "%(qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['total_eligible_bases'], total_possible_bases)
 				#"--cleanup " # The main cleanup will be done at the end of this script because the PTRIM.bam is needed for QC_getRunInfo.sh, and the chr_subset is needed for each run comparison.
 				# the main cleanup here will be the temporary files used in 3x3 table generation.
 				# These are old settings we probably won't need anymore.
