@@ -352,7 +352,7 @@ class QC_Sample:
 	def QC_2Runs(self, run1, run2, pref1, pref2, merged=''):
 		run1_json = json.load(open(run1))
 		run2_json = json.load(open(run2))
-	
+		
 		# set the paths
 		if 'results_qc_json' in self.sample_json and 'qc_folder' in self.sample_json:
 			qc_json = self.sample_json['results_qc_json']
@@ -376,6 +376,10 @@ class QC_Sample:
 				self.sample_json['analysis']['settings']['chromosomes_to_analyze'+merged] = ['all']
 			else:
 				self.sample_json['analysis']['settings']['chromosomes_to_analyze'+merged] = self.sample_json['analysis']['settings']['chromosomes_to_analyze']
+
+		# only analyze the entire exome for merged runs.
+		if run1_json['json_type'] != 'merged' or run2_json['json_type'] != 'merged':
+			merged = ''
 		
 		# IDEA: If the 'all' comparison has already been made, then pull the chr combination out of it.
 		# Only the runs that pass the single run QC metrics will be QC'd together.
