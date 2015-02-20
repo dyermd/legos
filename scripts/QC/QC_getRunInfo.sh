@@ -279,10 +279,10 @@ reverse_endbpCov=`awk -v cutoff=$AMP_COV_CUTOFF '{ if($3 >= cutoff) printf "."}'
 num_amps=`tail -n +2 $AMP | wc -l`
 
 # add up the beginning of the forward reads depths with the end of the reverse reads depths to get the "30x coverage at beginning of amplicon"
-begin_amp_cov=$(( forward_begbpCov + reverse_endbpCov ))
+begin_amp_cov=$(( (forward_begbpCov + reverse_endbpCov) / 2 ))
 #echo "$begin_amp_cov"
 # add up the end of the forward reads depths with the beginning of the reverse reads depths to get the "30x coverage at end of amplicon"
-end_amp_cov=$(( forward_endbpCov + reverse_begbpCov ))
+end_amp_cov=$(( (forward_endbpCov + reverse_begbpCov) / 2 ))
 #echo "$end_amp_cov"
 
 # Remove the header, and then pipe that into awk to get the amplicons with only > 30x coverage.
