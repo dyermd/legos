@@ -114,7 +114,11 @@ class XLSX_Writer():
 					else:
 						self.QCsheet.write_number(row, col, metrics[key], self.formats[write_format])
 				elif re.search("perc_format", write_format):
-					if float(metrics[key]) > 1:
+					# begin and end amp_cov temporary fix
+					if key == 'begin_amp_cov' or key == 'end_amp_cov':
+						if float(metrics[key]) > 1:
+							metrics[key] = metrics[key] / 2
+					elif float(metrics[key]) > 2:
 						metrics[key] = metrics[key] / 100
 					self.QCsheet.write_number(row, col, float(metrics[key]), self.formats[write_format])
 				elif re.search("dec3_format", write_format):
