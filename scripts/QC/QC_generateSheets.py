@@ -499,7 +499,7 @@ class XLSX_Writer():
 		# loop through the different comparisons of the given data_type and comparison type.
 		for runs_compared, table_values in sorted(qc_comparisons.iteritems()):
 			# get the run number
-			if 'run1_num' in table_values:
+			if 'run1_num' in table_values and 'run2_num' in table_values:
 				run1_num = int(table_values['run1_num'])
 				run2_num = int(table_values['run2_num'])
 			else:

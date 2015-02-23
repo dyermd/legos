@@ -639,6 +639,7 @@ class QC_Sample:
 					"json_type": "merged",
 					"run_folder": merger.output_dir, 
 					"run_name": run_name,
+					"run_num": self.sample_json['merged_%scount'%pref],
 					"run_type": run_type, 
 					"pass_fail_status": "pending", 
 					"project": self.sample_json['project'], 
