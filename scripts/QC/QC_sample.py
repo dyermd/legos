@@ -47,6 +47,9 @@ class QC_Sample:
 
 	# move the old 3x3 tables to the flag "old_GTs" 
 	def recalc_3x3_tables(self):
+		# fix the tumor GT cutoffs
+		self.sample_json['tumor_wt_cutoff'] = .2 
+		self.sample_json['tumor_hom_cutoff'] = .8 
 		# load the output QC json. will be used to check if this combination has already been made.
 		qc_json_data = {}
 		if os.path.isfile(qc_json):
