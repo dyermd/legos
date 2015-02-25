@@ -103,7 +103,7 @@ class QC_Sample:
 					# now QC the tumor and normal runs together.
 					self.QC_normal_tumor_runs(normal_runs, tumor_runs)
 					# make the excel spreadsheet containing the data and copy it back to the proton
-					self._make_xlsx()
+					#self._make_xlsx()
 					# write the sample json file
 					self.write_json(self.sample_json['json_file'], self.sample_json)
 	
@@ -119,7 +119,8 @@ class QC_Sample:
 					self.merge_runs(tumor_passing_bams, tumor_merge_dir, 'tumor', 'TMerged%d'%tumor_merge_count, 'tumor_')
 	
 				# If any runs were merged, QC them. If there are only 1 normal and tumor run, they won't be QCd again. 
-				if normal_merge_dir != '' or tumor_merge_dir != '' or (len(normal_passing_bams) == 1 and len(tumor_passing_bams) == 1):	
+				#if normal_merge_dir != '' or tumor_merge_dir != '' or (len(normal_passing_bams) == 1 and len(tumor_passing_bams) == 1):	
+				if normal_merge_dir != '' or tumor_merge_dir != '':	
 					# now QC the tumor and normal merged bams together if both normal and tumor runs are ready.
 					if 'final_normal_json' in self.sample_json and 'final_tumor_json' in self.sample_json:
 						qc_json = self.QC_2Runs(self.sample_json['final_normal_json'], self.sample_json['final_tumor_json'], 'normal_', 'tumor_', '_merged')
@@ -129,23 +130,26 @@ class QC_Sample:
 						json_type = self.update_merged_run_status(self.sample_json['final_tumor_json'], merged_perc_avail_bases)
 
 						# cleanup the individual bam files, but don't delete the final bam if it is in the original list of runs.
-						runs = self.sample_json['runs']
-						if self.sample_json['final_normal_json'] in runs:
-							del runs[runs.index(self.sample_json['final_normal_json'])]
-						if self.sample_json['final_tumor_json'] in runs:
-							del runs[runs.index(self.sample_json['final_tumor_json'])]
+						#runs = self.sample_json['runs']
+						#if self.sample_json['final_normal_json'] in runs:
+						#	del runs[runs.index(self.sample_json['final_normal_json'])]
+						#if self.sample_json['final_tumor_json'] in runs:
+						#	del runs[runs.index(self.sample_json['final_tumor_json'])]
 						# cleanup the individual run bam files
-						self.cleanup_sample.delete_runs(runs, self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
+						if merged_perc_avail_bases > .9:
+							# Cleanup the PTRIM.bam and chr bam files after all of the QC is done.
+							# are there any other files to clean up?
+							self.cleanup_sample.cleanup_runs(self.sample_json['runs'], self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
+							#self.cleanup_sample.delete_runs(runs, self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
 
-						# Cleanup after the merging QC is done.
-						self.cleanup_sample.cleanup_runs([self.sample_json['final_normal_json'], self.sample_json['final_tumor_json']], self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
+							# Cleanup after the merging QC is done.
+							self.cleanup_sample.cleanup_runs([self.sample_json['final_normal_json'], self.sample_json['final_tumor_json']], self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
 
-					# Set the sample_status
-					self.sample_json['sample_status'] = 'merged'
+							# Set the sample_status
+							self.sample_json['sample_status'] = 'merged_pass'
+						else:
+							self.sample_json['sample_status'] = 'awaiting_more_sequencing'
 
-		# Cleanup the PTRIM.bam and chr bam files after all of the QC is done.
-		# are there any other files to clean up?
-		self.cleanup_sample.cleanup_runs(self.sample_json['runs'], self.sample_json['analysis']['settings']['cleanup'], self.no_errors)
 		# make the excel spreadsheet containing the data and copy it back to the proton
 		self._make_xlsx()
 				
