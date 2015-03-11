@@ -34,11 +34,12 @@ class Cleanup:
 	def delete_run(self, run):
 		try:
 			run_json = json.load(open(run))
+			print "DO NOT remove the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
 			# Remove the bam file and bam index file
-			print "Removing the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
-			os.remove("%s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0]))
-			os.remove("%s/%s.bai"%(run_json['run_folder'], run_json['analysis']['files'][0]))
-			print "Removed the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
+			#print "Removing the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
+			#os.remove("%s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0]))
+			#os.remove("%s/%s.bai"%(run_json['run_folder'], run_json['analysis']['files'][0]))
+			#print "Removed the bam file: %s/%s"%(run_json['run_folder'], run_json['analysis']['files'][0])
 		except (OSError, KeyError, ValueError) as e:
 			print "Failed to remove the bam file!"
 

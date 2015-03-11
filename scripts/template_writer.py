@@ -162,6 +162,12 @@ class TemplateWriter:
         #fileHandle.write('python %s/scripts/QC/QC_sample.py --json %s --update_cutoffs /home/ionadmin/jeff/PNET.json --pass_fail \n'%(self.__softwareDirectory, job['json_file']))
 		# use this for creating all 3x3 tables regardless of pass/fail status
         #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --qc_all\n'%(self.__softwareDirectory, job['json_file']))
+		# use this to recalculate the 3x3 tables (specificaly to update the GT cutoffs.
+        #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --recalc_3x3_tables\n'%(self.__softwareDirectory, job['json_file']))
+		# use this to add the aligned stats (specificaly to update the GT cutoffs.
+        #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --get_alignment_stats\n'%(self.__softwareDirectory, job['json_file']))
+		# use this to correct the merged bam name
+        #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --fix_merged_names\n'%(self.__softwareDirectory, job['json_file']))
         #add other types later
 
 
