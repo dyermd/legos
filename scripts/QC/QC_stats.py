@@ -118,7 +118,10 @@ def getAllQCInfo(QC_files):
 		# load this samples QC data into the master dictionary.
 		# the dictionary inside of run_data should hold all of this runs QC metrics such as % polyclonality and such
 		if 'QC_comparisons' in jsonData:
-			all_samples_QC_info[jsonData['sample']] = jsonData['QC_comparisons']
+			if 'sample' in jsonData:
+				all_samples_QC_info[jsonData['sample']] = jsonData['QC_comparisons']
+			else:
+				all_samples_QC_info[jsonData['sample_name']] = jsonData['QC_comparisons']
 	
 	return all_samples_QC_info
 

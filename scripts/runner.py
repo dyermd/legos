@@ -15,8 +15,9 @@ class Runner:
     def __init__(self, mode):
         self.__mode = mode
 
+		# emails are sent using template.py and QC_sample.py
         # these are the default ones
-        self.__emails = ['mdyer@4combinator.com']
+        #self.__emails = []
         self.__queue = 'all.q'
         self.__priority = '0'
 
@@ -36,8 +37,8 @@ class Runner:
     # @returns The SGE job number
     def submitToSGE(self, file, fileData):
         #see if there were other emails address provided
-        if 'emails' in fileData:
-            self.__emails = self.__emails + fileData['emails']
+        #if 'emails' in fileData:
+        #    self.__emails = self.__emails + fileData['emails']
 
         #see if another queue has been provided
         if 'queue' in fileData['analysis']['settings']:
@@ -48,7 +49,8 @@ class Runner:
             self.__priority = fileData['analysis']['settings']['priority']
 
         #build the command call
-        systemCall = 'qsub -m e -M \'%s\' -p %s -q %s -e %s/sge.log -o %s/sge.log %s' % (','.join(self.__emails), self.__priority, self.__queue, fileData['output_folder'], fileData['output_folder'], file)
+        systemCall = 'qsub -p %s -q %s -e %s/sge.log -o %s/sge.log %s' % (self.__priority, self.__queue, fileData['output_folder'], fileData['output_folder'], file)
+        #systemCall = 'qsub -m e -M \'%s\' -p %s -q %s -e %s/sge.log -o %s/sge.log %s' % (','.join(self.__emails), self.__priority, self.__queue, fileData['output_folder'], fileData['output_folder'], file)
 
         #submit to SGE and grab the job id
         #print systemCall

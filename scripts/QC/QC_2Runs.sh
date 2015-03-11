@@ -562,103 +562,20 @@ if [ $? -ne 0 ]; then
 	exit 
 fi
 
+# Cleanup is done in cleanup.py called by QC_sample
 # Cleanup and done.
-if [ "$CLEANUP" == "True" ]; then
-	rm -rf ${TEMP_DIR}
-	# Remove the chr subsets if they were created.
-	if [ "$CHR" != "" ]; then
-		rm -rf ${RUN1_DIR}/${CHR} ${RUN2_DIR}/${CHR} 2>/dev/null
-	fi
-	# Remove the PTRIM.bam
-	rm ${RUN1_DIR}/PTRIM.bam* ${RUN2_DIR}/PTRIM.bam* 2>/dev/null
-fi
+#if [ "$CLEANUP" == "True" ]; then
+#	rm -rf ${TEMP_DIR}
+#	# Remove the chr subsets if they were created.
+#	if [ "$CHR" != "" ]; then
+#		rm -rf ${RUN1_DIR}/${CHR} ${RUN2_DIR}/${CHR} 2>/dev/null
+#	fi
+#	# Remove the PTRIM.bam
+#	rm ${RUN1_DIR}/PTRIM.bam* ${RUN2_DIR}/PTRIM.bam* 2>/dev/null
+#fi
 
 echo "	$OUTPUT_DIR Finished QC." 
 #echo "----------------------------------------------"
 echo "$OUTPUT_DIR Finished QC." >>$log
 #fi
 
-		 	# ------------------------------------------------------------------
-		 	# ----------------------- FIX FOR CDS REGION -----------------------
-		 	# ------------------------------------------------------------------
-			# NEEDS TO BE UPDATED!!!!
-#if [ "$GET_CDS_DEPTHS" == "True" ]; then
-#	if [ "`find ${OUTPUT_DIR}/VCF1${CHR}_CDS_Final.vcf -type f 2>/dev/null`" -a "`find ${OUTPUT_DIR}/VCF2${CHR}_CDS_Final.vcf -type f 2>/dev/null`" \
-#		-a "`find ${OUTPUT_DIR}/Run1${CHR}_CDS_depths -maxdepth 0 -type f 2>/dev/null`" -a "`find ${OUTPUT_DIR}/Run2${CHR}_CDS_depths -maxdepth 0 -type f 2>/dev/null`" ]; then
-#		echo "	$OUTPUT_DIR CDS region has already been QCd. Skipping QC and running QC_Compare_VCFs.py"
-#	elif [ ! "`find ${RUN1_DIR}/${CHR}/${CHR}PTRIM.bam -maxdepth 0 2>/dev/null`" -o ! "`find ${RUN2_DIR}/${CHR}/${CHR}PTRIM.bam -maxdepth 0 2>/dev/null`" ]; then
-#		echo "ERROR: ${TEMP_DIR} does not have the necessary PTRIM.bam files. QC would have to be restarted (i.e. delete $OUTPUT_DIR and start over)."
-#	else
-#		echo "	$OUTPUT_DIR Creating CDS QC tables at `date`"
-#		echo "Creating CDS QC tables for $OUTPUT_DIR at `date`" >>$log
-#		echo "----------------------------------------------" >>$log
-#
-#		setupBAMs $RUN1_DIR $RUN2_DIR
-#
-#		# First, make sure we have the right bed files 
-#		if [ ! "`find ${TEMP_DIR}/low_cov_subset.bed -type f 2>/dev/null`" ]; then
-#			# Function to keep only the amplicons that have depth coverage > what the user specified.
-#			subset_low_cov $RUN1_DIR 1
-#			subset_low_cov $RUN2_DIR 2
-#			echo "--- Creating subset bed files (where amp cov > $AMP_COV_CUTOFF) ---" >>${log}
-#			# Now intersect the two subset bed files
-#			bedtools intersect -a ${TEMP_DIR}/run1_subset.bed -b ${TEMP_DIR}/run2_subset.bed -u -f 0.99 > ${TEMP_DIR}/low_cov_subset.bed 2>>$log
-#		fi
-#		intersected_bed="low_cov_subset.bed"
-#	
-#		bed_name=`basename $BED`
-#		if [ ! "`find ${TEMP_DIR}/intersect_${bed_name} -type f 2>/dev/null`" ]; then
-#			bedtools intersect -a ${TEMP_DIR}/${intersected_bed} -b ${BED} -u -f 0.99 > ${TEMP_DIR}/intersect_${bed_name} 2>>$log
-#		fi
-#		intersected_bed="intersect_${bed_name}"
-#
-#		if [ "$SUBSET_BED" != "" ]; then
-#			subset2_name=`basename $SUBSET_BED`
-#			if [ ! "`find ${TEMP_DIR}/intersect2_${subset2_name} -type f 2>/dev/null`" ]; then
-#				bedtools intersect -a ${TEMP_DIR}/${intersected_bed} -b ${SUBSET_BED} -u -f 0.99 > ${TEMP_DIR}/intersect2_${subset2_name} 2>>$log
-#			fi
-#			intersected_bed="intersect2_${subset2_name}"
-#		fi
-#
-#		# Now intersect the available bed file with the CDS bed.
-#		bedtools intersect -a ${TEMP_DIR}/${intersected_bed} -b ${CDS_BED} > ${TEMP_DIR}/CDS_subset.bed 2>>$log
-#		intersected_bed="CDS_subset.bed"
-#			
-#		# This fuction gets only the chr and pos from the project bed file (to save time and make the output better for bedtools coverage.
-#		setupBED ${TEMP_DIR}/${intersected_bed}
-#		
-#		# Run GATK. Not needed for hotspot creation and such, but it will be used to find the total # of eligible bases later on.
-#		getDepths ${RUN1_DIR}/${CHR}/${CHR}PTRIM.bam ${TEMP_DIR}/${intersected_bed} 1${CHR}
-#		getDepths ${RUN2_DIR}/${CHR}/${CHR}PTRIM.bam ${TEMP_DIR}/${intersected_bed} 2${CHR}
-#	
-#		waitForJobsToFinish "CDS samtools depth ${CHR}"
-#		mv ${TEMP_DIR}/Run1${CHR}_CDS_depths ${TEMP_DIR}/Run2${CHR}_CDS_depths ${OUTPUT_DIR}
-#	
-#		# And then intersect that bed file with the merged vcf file to get only the variants that have > 30x coverage.
-#		bedtools intersect -a ${OUTPUT_DIR}/VCF1${CHR}_Final.vcf -b ${TEMP_DIR}/${intersected_bed} > ${OUTPUT_DIR}/VCF1${CHR}_CDS_Final.vcf 2>>$log
-#		bedtools intersect -a ${OUTPUT_DIR}/VCF2${CHR}_Final.vcf -b ${TEMP_DIR}/${intersected_bed} > ${OUTPUT_DIR}/VCF2${CHR}_CDS_Final.vcf 2>>$log
-#		# get only the variants that are listed in the Hotspot file
-#	fi
-#	
-#	total_elibigle_bases=`paste ${OUTPUT_DIR}/Run1${CHR}_CDS_depths ${OUTPUT_DIR}/Run2${CHR}_CDS_depths | \
-#		awk -v cutoff1=$DEPTH_CUTOFF1 -v cutoff2=$DEPTH_CUTOFF2 '{ if ($3 >= cutoff1 && $6 >= cutoff2) printf "."}' | wc -c`
-#	if [ "$total_eligible_bases" == "0" ]; then
-#		echo "ERROR: total_eligible_bases cannot =  0. ${OUTPUT_DIR}/Run1_depths probably not found"
-#		exit 1
-#	else
-#		# This script takes the two VCF files generated from running TVC using the same hotspot file, matches them and outputs the info to the csv and the json_out file.
-#		python ${QC_SCRIPTS}/QC_Compare_VCFs.py \
-#			--vcfs ${OUTPUT_DIR}/VCF1${CHR}_CDS_Final.vcf ${OUTPUT_DIR}/VCF2${CHR}_CDS_Final.vcf \
-#			--jsons $JSON1 $JSON2 \
-#			--gt_cutoffs $WT_CUTOFF1 $HOM_CUTOFF1 $WT_CUTOFF2 $HOM_CUTOFF2 \
-#			--total_bases $total_elibigle_bases \
-#			--out_csv ${OUTPUT_DIR}/matched_variants${CHR}_CDS.csv \
-#			--json_out ${JSON_OUT} \
-#			--cds # this option changes the output in JSON_OUT
-#		if [ $? -ne 0 ]; then
-#			echo "ERROR: on CDS $OUTPUT_DIR QC_Compare_VCFs.py had a problem!! " 1>&2
-#			exit 
-#		fi
-#	fi
-#fi
-		 #----------------------- FIX FOR CDS REGION END -----------------------

@@ -25,20 +25,19 @@ class TemplateWriter:
         if job['analysis']['type'] == 'qc_tvc':
             #we want to merge, QC, then call variants
             self.__writeHeader(job, fileHandle)
-            self.__writeStatusChange('running', job['json_file'], fileHandle, False, job['sample_name'])
+            self.__writeStatusChange('running', job, fileHandle, False)
             self.__writeCovTVCTemplate(job, fileHandle)
-            self.__writeStatusChange('finished', job['json_file'], fileHandle, True, job['sample_name'])
+            self.__writeStatusChange('finished', job, fileHandle, True)
         elif job['analysis']['type'] == 'qc_compare':
-            print 'hit'
             self.__writeHeader(job, fileHandle)
-            self.__writeStatusChange('running', job['json_file'], fileHandle, False, job['sample_name'])
+            self.__writeStatusChange('running', job, fileHandle, False)
             self.__writeQCCompareTemplate(job, fileHandle)
-            self.__writeStatusChange('finished', job['json_file'], fileHandle, True, job['sample_name'])
+            self.__writeStatusChange('finished', job, fileHandle, True)
         elif job['analysis']['type'] == 'qc_sample':
             self.__writeHeader(job, fileHandle)
-            self.__writeStatusChange('running', job['json_file'], fileHandle, False, job['sample_name'])
+            self.__writeStatusChange('running', job, fileHandle, False)
             self.__writeQCSampleTemplate(job, fileHandle)
-            self.__writeStatusChange('finished', job['json_file'], fileHandle, True, job['sample_name'])
+            self.__writeStatusChange('finished', job, fileHandle, True)
 
         #close the file handle
         fileHandle.close()
@@ -72,24 +71,27 @@ class TemplateWriter:
     ## Write the code for updating the status in the JSON file
     # @param self The object pointer
     # @param status The json job object
-    # @param jsonFile The json file to update the status in
-    # @param file The file handle
+    # @param job The json file to update the status in
+    # @param fileHandle The file handle
     # @param wrap Boolean of whether or not to wrap the status
-    def __writeStatusChange(self, status, jsonFile, fileHandle, wrap, sample_name):
+    def __writeStatusChange(self, status, job, fileHandle, wrap):
         #set the status and wrap if requested
         if not wrap:
-            fileHandle.write('python %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, status))
+            fileHandle.write('python %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, job['json_file'], status))
 			# I'm not sure how to send emails the normal way so I set up ssmtp on the linux server.
-            fileHandle.write('echo -e "%s beginning analysis" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (sample_name))
+            fileHandle.write('echo -e "%s beginning analysis" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (job['sample_name']))
         else:
             fileHandle.write('if [ $? -ne 0 ]; then\n')
-            fileHandle.write('\tpython %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, "failed"))
+            fileHandle.write('\tpython %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, job['json_file'], "failed"))
             #if 'emails' in job and 'sample_name' in job:
-            fileHandle.write('\tprintf "%s finished with a status of %s. \\n`grep sample_status *.json`\\n" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (sample_name, "failed"))
+            if 'emails' in job:
+               for email in job['emails']:
+                  fileHandle.write('\tprintf "%s finished with a status of %s. \\n`grep sample_status *.json`\\n" | ssmtp -vvv %s >/dev/null 2>&1\n' % (job['sample_name'], "failed", email))
             #fileHandle.write('\techo "%s finished with a status of %s. `grep sample_status *.json`" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (sample_name, "failed"))
             fileHandle.write('else\n')
-            fileHandle.write('\tpython %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, jsonFile, status))
-            fileHandle.write('\tprintf "%s finished with a status of %s. \\n`grep sample_status *.json`\\n" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (sample_name, status))
+            fileHandle.write('\tpython %s/scripts/update_json.py -j %s -s %s\n' % (self.__softwareDirectory, job['json_file'], status))
+			# QC_sample is going to email the xlsx file when it finishes so don't send an email here.
+            #fileHandle.write('\tprintf "%s finished with a status of %s. \\n`grep sample_status *.json`\\n" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (sample_name, status))
             #fileHandle.write('\techo "%s finished with a status of %s" | ssmtp -vvv jlaw@childhooddiseases.org >/dev/null 2>&1\n' % (sample_name, status))
             fileHandle.write('fi\n')
 

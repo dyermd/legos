@@ -100,19 +100,19 @@ class XLSX_Writer():
 	# @param Max will be the maximum threshold for writing in red, unless it's 0. If max if negative, it will be treated as a minimum threshold
 	# MAx is not yet implemented.
 	# @return returns 1 so there will be one less line of code (to incrament col). Maybe it could just incrament col, I would just rather not have global variables
-	def _check_to_write(self, row, col, key, write_format, metrics):
+	def _check_to_write(self, row, col, key, write_format, metrics, Sheet):
 		if key in metrics:
 			try:
 				if re.search("=", write_format):
 					if metrics[key] != "":
 						cell1 = xl_rowcol_to_cell(row, col-2)
 						cell2 = xl_rowcol_to_cell(row, col-1)
-						self.QCsheet.write_formula(row, col, "=%s-%s"%(cell1, cell2), self.formats[write_format[1:]])
+						Sheet.write_formula(row, col, "=%s-%s"%(cell1, cell2), self.formats[write_format[1:]])
 				elif re.search("num_format", write_format):
 					if not isinstance(metrics[key], int) and not isinstance(metrics[key], float):
-						self.QCsheet.write_number(row, col, int(metrics[key].replace(',','')), self.formats[write_format])
+						Sheet.write_number(row, col, int(metrics[key].replace(',','')), self.formats[write_format])
 					else:
-						self.QCsheet.write_number(row, col, metrics[key], self.formats[write_format])
+						Sheet.write_number(row, col, metrics[key], self.formats[write_format])
 				elif re.search("perc_format", write_format):
 					# begin and end amp_cov temporary fix
 					if key == 'begin_amp_cov' or key == 'end_amp_cov':
@@ -120,204 +120,163 @@ class XLSX_Writer():
 							metrics[key] = metrics[key] / 2
 					elif float(metrics[key]) > 2:
 						metrics[key] = metrics[key] / 100
-					self.QCsheet.write_number(row, col, float(metrics[key]), self.formats[write_format])
+					Sheet.write_number(row, col, float(metrics[key]), self.formats[write_format])
 				elif re.search("dec3_format", write_format):
-					self.QCsheet.write_number(row, col, float(metrics[key]), self.formats[write_format])
+					Sheet.write_number(row, col, float(metrics[key]), self.formats[write_format])
 				# special case to write the formula for the +-10 bp col
 				else:
 					# if write_format is blank, then self.formats will also be blank
-					self.QCsheet.write(row, col, metrics[key], self.formats[write_format])
+					Sheet.write(row, col, metrics[key], self.formats[write_format])
 			except ValueError:
-				self.QCsheet.write(row, col, metrics[key], self.formats[write_format])
+				Sheet.write(row, col, metrics[key], self.formats[write_format])
+		return 1
+
+
+	# little function to write a header cell.
+	def _writeHeaderCell(self, col, text, width, Sheet):
+		Sheet.write(0, col, text, self.formats['header_format'])
+		Sheet.set_column(col,col,width, self.formats['center'])
 		return 1
 
 
 	# @param ex_json_data if it is None, then it will return 'false' in an if statement
-	def _writeRunMetricHeaders(self, ex_json_data=None):
-		# QCsheet is where all of the metrics about each run will be written
-		self.QCsheet = self.workbook.add_worksheet("QC Metrics")
-		self.QCsheet.freeze_panes(1,3)
+	def _writeMergedMetricHeaders(self, ex_json_data=None):
+		# RunSheet is where all of the metrics about each run will be written
+		self.Merged = self.workbook.add_worksheet("Merged QC Metrics")
+		self.Merged.freeze_panes(1,3)
 		
 		# First write the QC metrics for each run of each sample.
 		# Write the header line. there could definitely be a better way of doing this, but this is what I figured out for now. Just comment and uncomment as needed.
 		col = 0
-		self.QCsheet.write(0,col, "Sample #", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
+		col += self._writeHeaderCell(col, "Sample #", None, self.Merged)
 		# check to see if the N or T should be written
 		if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
-			self.QCsheet.write(0,col, "Normal (N) or Tumor (T)", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,7, self.formats['center'])
-			col += 1
-		self.QCsheet.write(0,col, "Run #", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,5, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "gDNA isolation date", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,10, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "gDNA concentration (ng/ul)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,10, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Library concentration (ng/ul)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Library prep date", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,10, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Run Date", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Run ID", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Thermocycler Used", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Barcode used", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Total Basepairs (G)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "% Polyclonal", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Mean Read Length", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Median Read Length", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
+			col += self._writeHeaderCell(col, "Normal (N) or Tumor (T)", 7, self.Merged)
+		col += self._writeHeaderCell(col, "Merged File Name", 30, self.Merged)
+		col += self._writeHeaderCell(col, "Included Runs", 15, self.Merged)
+		col += self._writeHeaderCell(col, "Total Aligned Basepairs", 12, self.Merged)
+		col += self._writeHeaderCell(col, "Total AQ20 Basepairs", 12, self.Merged)
+		col += self._writeHeaderCell(col, "Mean Read Length", None, self.Merged)
+		col += self._writeHeaderCell(col, "Median Read Length", None, self.Merged)
 		# see if we have the exp_read_length
 		if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings'] and 'exp_median_read_length' in ex_json_data['analysis']['settings']['cutoffs']:
-			self.QCsheet.write(0,col, "%% expected read length (out of %d bp)"%ex_json_data['analysis']['settings']['cutoffs']['exp_median_read_length'], self.formats['header_format'])
+			col += self._writeHeaderCell(col, "%% expected read length (out of %d bp)"%ex_json_data['analysis']['settings']['cutoffs']['exp_median_read_length'], 12, self.Merged)
 		else:
-			self.QCsheet.write(0,col, "% expected read length (out of XXX bp)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "Median Read Coverage Overall", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "% amplicons > 30x coverage", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,12, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp +10 (considering fwd/rev read split)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "% amplicons > 30x covered at bp -10 (considering fwd/rev read split)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "ABS %covered at bp(10) - bp(n-10)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-	#	self.QCsheet.write(0,col, "total number of bases covered at 30x (the # of bases covered in the 'covered_bases region' region.)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,18, self.formats['center'])
-	#	col += 1
-	#	self.QCsheet.write(0,col, "% covered bases (n/83046)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
-	#	self.QCsheet.write(0,col, "% targeted bases (n/84447)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
+			col += self._writeHeaderCell(col, "% expected read length (out of XXX bp)", 12, self.Merged)
+		col += self._writeHeaderCell(col, "Median Read Coverage Overall", None, self.Merged)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x coverage", 12, self.Merged)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x covered at bp +10 (considering fwd/rev read split)", 13, self.Merged)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x covered at bp n-10 (considering fwd/rev read split)", 13, self.Merged)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x covered at bp +10 (>=30x) that are also covered at n-10 bp (>=30x)", 13, self.Merged)
+		col += self._writeHeaderCell(col, "Ts/Tv", None, self.Merged)
+		col += self._writeHeaderCell(col, "# Total variants (single allele)", 13, self.Merged)
+		col += self._writeHeaderCell(col, "# HET variants (single allele rates)", 13, self.Merged)
+		col += self._writeHeaderCell(col, "# HOM variants (single allele rates)", 13, self.Merged)
+		col += self._writeHeaderCell(col, "HET/HOM ratio (single allele rates)", 13, self.Merged)
+		# check to see if the N or T should be written
+		if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+			col += self._writeHeaderCell(col, "Tumor/Normal Comparisons: No evidence of contamination", 10, self.Merged)
+		try:
+			# write this final header for tumor_normal comparisons
+			if ex_json_data and 'merged_amp_cov' in ex_json_data['analysis']['settings']['cutoffs'] and ex_json_data['sample_type'] == "tumor_normal":
+				col += self._writeHeaderCell(col, "Final Merged QC Status (PASS if the %% available bases is > %s in the final tumor/normal comparison"%ex_json_data['analysis']['settings']['cutoffs']['merged_amp_cov'], 15, self.Merged)
+			elif ex_json_data and 'merged_amp_cov' in ex_json_data['analysis']['settings']['cutoffs'] and ex_json_data['sample_type'] == "germline":
+				col += self._writeHeaderCell(col, "Final Merged QC Status (PASS if the %% amplicons covered is > %s)"%ex_json_data['analysis']['settings']['cutoffs']['merged_amp_cov'], 15, self.Merged)
+		except (KeyError, TypeError):
+			col += self._writeHeaderCell(col, "Final Merged QC Status", 10, self.Merged)
+		self.Merged.set_column(col,col+20,12, self.formats['center'])
+		
+		self.Merged.set_row(0,100, self.formats['header_format'])
+
+
+	# @param ex_json_data if it is None, then it will return 'false' in an if statement
+	def _writeRunMetricHeaders(self, ex_json_data=None):
+		# RunSheet is where all of the metrics about each run will be written
+		self.RunSheet = self.workbook.add_worksheet("QC Metrics")
+		self.RunSheet.freeze_panes(1,3)
+		
+		# First write the QC metrics for each run of each sample.
+		# Write the header line. there could definitely be a better way of doing this, but this is what I figured out for now. Just comment and uncomment as needed.
+		col = 0
+		col += self._writeHeaderCell(col, "Sample #", None, self.RunSheet)
+		# check to see if the N or T should be written
+		if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+			col += self._writeHeaderCell(col, "Normal (N) or Tumor (T)", 7, self.RunSheet)
+		col += self._writeHeaderCell(col, "Run #", 5, self.RunSheet)
+		col += self._writeHeaderCell(col, "gDNA isolation date", 10, self.RunSheet)
+		col += self._writeHeaderCell(col, "gDNA concentration (ng/ul)", 10, self.RunSheet)
+		col += self._writeHeaderCell(col, "Library concentration (ng/ul)", None, self.RunSheet)
+		col += self._writeHeaderCell(col, "Library prep date", 10, self.RunSheet)
+		col += self._writeHeaderCell(col, "Run Date", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "Run ID", None, self.RunSheet)
+		col += self._writeHeaderCell(col, "Thermocycler Used", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "Barcode used", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "% Polyclonal", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "Total Aligned Basepairs", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "Total AQ20 Basepairs", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "Mean Read Length", None, self.RunSheet)
+		col += self._writeHeaderCell(col, "Median Read Length", None, self.RunSheet)
+		# see if we have the exp_read_length
+		if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings'] and 'exp_median_read_length' in ex_json_data['analysis']['settings']['cutoffs']:
+			col += self._writeHeaderCell(col, "%% expected read length (out of %d bp)"%ex_json_data['analysis']['settings']['cutoffs']['exp_median_read_length'], 12, self.RunSheet)
+		else:
+			col += self._writeHeaderCell(col, "% expected read length (out of XXX bp)", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "Median Read Coverage Overall", None, self.RunSheet)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x coverage", 12, self.RunSheet)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x covered at bp +10 (considering fwd/rev read split)", 13, self.RunSheet)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x covered at bp n-10 (considering fwd/rev read split)", 13, self.RunSheet)
+		col += self._writeHeaderCell(col, "% amplicons >= 30x covered at bp +10 (>=30x) that are also covered at n-10 bp (>=30x)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "total number of bases covered at 30x (the # of bases covered in the 'covered_bases region' region.)", 18, self.RunSheet)
+		#col += self._writeHeaderCell(col, "% covered bases (n/83046)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "% targeted bases (n/84447)", 13, self.RunSheet)
 		# check to see if the 'pool_dropout' metrics are available for this spreadsheet
 		if not ex_json_data or ('pool_dropout' in ex_json_data['analysis']['settings'] and ex_json_data['analysis']['settings']['pool_dropout'] == True):
-			self.QCsheet.write(0,col, "# of pools <10% median coverage", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-			self.QCsheet.write(0,col, "# of pools between 10%-50% median coverage ", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-			self.QCsheet.write(0,col, "# of pools between 50%-75% median coverage", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-			self.QCsheet.write(0,col, "# of pools passed", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-			self.QCsheet.write(0,col, "total # of pools", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-		self.QCsheet.write(0,col, "Ts/Tv", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,None, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "# Total variants (single allele)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "# HET variants (single allele rates)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "# HOM variants (single allele rates)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-		self.QCsheet.write(0,col, "HET/HOM ratio (single allele rates)", self.formats['header_format'])
-		self.QCsheet.set_column(col,col,13, self.formats['center'])
-		col += 1
-#		self.QCsheet.write(0,col, "3x3 N-N pair (whole amplicon)", self.formats['header_format'])
-#		self.QCsheet.set_column(col,col,13, self.formats['center'])
-#		col += 1
-#		self.QCsheet.write(0,col, "Total bases evaluated (>=30x in both runs) (whole amplicon)", self.formats['header_format'])
-#		self.QCsheet.set_column(col,col,13, self.formats['center'])
-#		col += 1
-#		self.QCsheet.write(0,col, "% Available Bases (whole amplicon)", self.formats['header_format'])
-#		self.QCsheet.set_column(col,col,13, self.formats['center'])
-#		col += 1
-#		self.QCsheet.write(0,col, "3x3 qc observed error counts  (whole amplicon)", self.formats['header_format'])
-#		self.QCsheet.set_column(col,col,13, self.formats['center'])
-#		col += 1
-#		self.QCsheet.write(0,col, "3x3 qc error rate  (whole amplicon)", self.formats['header_format'])
-#		self.QCsheet.set_column(col,col,13, self.formats['center'])
-#		col += 1
-#		self.QCsheet.write(0,col, "Z-Score error rate (whole amplicon)", self.formats['header_format'])
-#		self.QCsheet.set_column(col,col,13, self.formats['center'])
-#		col += 1
-	#	self.QCsheet.write(0,col, "Total bases evaluated (>=30x in both runs) (cds only)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
-	#	self.QCsheet.write(0,col, "% Available Bases (cds only)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
-	#	self.QCsheet.write(0,col, "3x3 qc observed error counts  (cds only)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
-	#	self.QCsheet.write(0,col, "3x3 qc error rate  (cds only)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
-	#	self.QCsheet.write(0,col, "Z-Score error rate (cds only)", self.formats['header_format'])
-	#	self.QCsheet.set_column(col,col,13, self.formats['center'])
-	#	col += 1
+			col += self._writeHeaderCell(col, "# of pools <10% median coverage", None, self.RunSheet)
+			col += self._writeHeaderCell(col, "# of pools between 10%-50% median coverage ", None, self.RunSheet)
+			col += self._writeHeaderCell(col, "# of pools between 50%-75% median coverage", None, self.RunSheet)
+			col += self._writeHeaderCell(col, "# of pools passed", None, self.RunSheet)
+			col += self._writeHeaderCell(col, "total # of pools", None, self.RunSheet)
+		col += self._writeHeaderCell(col, "Ts/Tv", None, self.RunSheet)
+		col += self._writeHeaderCell(col, "# Total variants (single allele)", 13, self.RunSheet)
+		col += self._writeHeaderCell(col, "# HET variants (single allele rates)", 13, self.RunSheet)
+		col += self._writeHeaderCell(col, "# HOM variants (single allele rates)", 13, self.RunSheet)
+		col += self._writeHeaderCell(col, "HET/HOM ratio (single allele rates)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "3x3 N-N pair (whole amplicon)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "Total bases evaluated (>=30x in both runs) (whole amplicon)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "% Available Bases (whole amplicon)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "3x3 qc observed error counts  (whole amplicon)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "3x3 qc error rate  (whole amplicon)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "Z-Score error rate (whole amplicon)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "Total bases evaluated (>=30x in both runs) (cds only)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "% Available Bases (cds only)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "3x3 qc observed error counts  (cds only)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "3x3 qc error rate  (cds only)", 13, self.RunSheet)
+		#col += self._writeHeaderCell(col, "Z-Score error rate (cds only)", 13, self.RunSheet)
 		#if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings']:
 		try:
 			# print the actual cutoffs used in the script for the header line
-			self.QCsheet.write(0,col, "Run Status FAIL if (i) %% expected median read length <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['perc_exp_median_read_length']) + \
+			text = "Run Status FAIL if (i) %% expected median read length <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['perc_exp_median_read_length']) + \
 					"OR (ii) %% Amplicons covered at +10 and/or n-10th position <%.2f%%, "%(ex_json_data['analysis']['settings']['cutoffs']['begin_end_amp_cov']) + \
-					"OR (iii) pools found <50% median coverage", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,20, self.formats['center'])
-			col += 1
-			self.QCsheet.write(0,col, "QC status (PASSED RUN status but FAILED with error rate > %.1e in QC table). "%(ex_json_data['analysis']['settings']['cutoffs']['error_rate']) + \
-					"Look at only Normal-Normal or Tumor-Tumor comparison in the case of LOH candidates", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,20, self.formats['center'])
-			col += 1
-			# write this final header for tumor_normal comparisons
-			if 'merged_amp_cov' in ex_json_data['analysis']['settings']['cutoffs'] and ex_json_data['sample_type'] == "tumor_normal":
-				self.QCsheet.write(0,col, "Final Merged QC Status (PASS if the %% available bases is > %s in the final tumor/normal comparison"%(ex_json_data['analysis']['settings']['cutoffs']['merged_amp_cov']))
-				self.QCsheet.set_column(col,col,15, self.formats['center'])
-				col += 1
+					"OR (iii) pools found <50% median coverage"
+			col += self._writeHeaderCell(col, text, 20, self.RunSheet)
+			text = "QC status (PASSED RUN status but FAILED with error rate > %.1e in QC table). "%(ex_json_data['analysis']['settings']['cutoffs']['error_rate']) + \
+					"Look at only Normal-Normal or Tumor-Tumor comparison in the case of LOH candidates"
+			col += self._writeHeaderCell(col, text, 20, self.RunSheet)
 		except (KeyError, TypeError):
-			self.QCsheet.write(0,col, "run pass/fail status", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-			self.QCsheet.write(0,col, "3x3 table error rate pass/fail status", self.formats['header_format'])
-			self.QCsheet.set_column(col,col,None, self.formats['center'])
-			col += 1
-		self.QCsheet.set_column(col,col+20,12, self.formats['center'])
-		
-		self.QCsheet.set_row(0,100, self.formats['header_format'])
+			col += self._writeHeaderCell(col, "run pass/fail status", None, self.RunSheet)
+			col += self._writeHeaderCell(col, "3x3 table error rate pass/fail status", None, self.RunSheet)
+
+		self.RunSheet.set_column(col,col+20,12, self.formats['center'])
+		self.RunSheet.set_row(0,100, self.formats['header_format'])
 
 
 	# @param run_metrics the dictionary containing all of the run_metrics
 	def writeRunMetrics(self, run_metrics, ex_json_data=None):
 		# first write the headers
 		self._writeRunMetricHeaders(ex_json_data)
-		row = 1
+		self._writeMergedMetricHeaders(ex_json_data)
+		merged_row = 0
+		run_row = 0
 		azure = '_azure'
 		
 		for sample in sorted(run_metrics):
@@ -328,87 +287,91 @@ class XLSX_Writer():
 				else:
 					azure = ""
 			for run, metrics in sorted(run_metrics[sample]['runs'].iteritems()):
+				if 'json_type' in metrics and metrics['json_type'] == 'merged':
+					Sheet = self.Merged
+					merged_row += 1
+					row = merged_row
+				else:
+					Sheet = self.RunSheet
+					run_row += 1
+					row = run_row
 				col = 0
-				#col += self._check_to_write(row, col, 'sample_num', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'sample', "" + azure, metrics)
+				#col += self._check_to_write(row, col, 'sample_num', "" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'sample', "" + azure, metrics, Sheet)
 				# write the run number with the N or T
 				if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
 					if 'run_type' in metrics and metrics['run_type'] == 'normal':
-						self.QCsheet.write(row, col, "N")
+						Sheet.write(row, col, "N")
 					else:
-						self.QCsheet.write(row, col, "T")
+						Sheet.write(row, col, "T")
 					col += 1
 				# if this is a merged run, then put the merged name for the run number
 				if 'json_type' in metrics and metrics['json_type'] == 'merged':
-					col += self._check_to_write(row, col, 'run_name', "" + azure, metrics)
+					col += self._check_to_write(row, col, 'run_name', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'runs_used_to_merge', "" + azure, metrics, Sheet)
 				else:
-					col += self._check_to_write(row, col, 'run_num', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'gDNA_isolation', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'gDNA_conc', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'run_date', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'run_id', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'thermocycler', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'barcode', "" + azure, metrics)
-				col += self._check_to_write(row, col, 'total_bases', "num_format" + azure, metrics)
+					col += self._check_to_write(row, col, 'run_num', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'gDNA_isolation', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'gDNA_conc', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'lib_conc', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'lib_prep_date', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'run_date', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'run_id', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'thermocycler', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'barcode', "" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'polyclonality', "perc_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'aligned_bases', "num_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'aq20_bases', "num_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'mean_read_length', "num_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'median_read_length', "num_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'perc_exp_median_read_length', 'perc_format' + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'median_coverage_overall', "num_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'amp_cov', "perc_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'begin_amp_cov', 'perc_format' + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics, Sheet)
+				# give it the dummy 'end_amp_cov' key to write the function of +-10 bp difference. the = is for a function
+				col += self._check_to_write(row, col, 'begin_end_amp_cov', 'perc_format' + azure, metrics, Sheet)
+				if not ex_json_data or ('pool_dropout' in ex_json_data['analysis']['settings'] and ex_json_data['analysis']['settings']['pool_dropout'] == True) \
+						and 'json_type' in metrics and metrics['json_type'] != 'merged':
+					col += self._check_to_write(row, col, 'pools_less_than_10', "num_format" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'pools_between_10_and_50', "num_format" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'pools_between_50_and_75', "num_format" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'pools_pass', "num_format" + azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'pools_total', "num_format" + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'ts_tv', 'dec3_format' + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'total_vars', 'num_format' + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'num_het', 'num_format' + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'num_hom', 'num_format' + azure, metrics, Sheet)
+				col += self._check_to_write(row, col, 'het_hom', 'dec3_format' + azure, metrics, Sheet)
+				# Now write the pass/fail status
+				# let the master spreadsheet handle conditional formatting
+				if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings'] \
+						and 'json_type' in metrics and metrics['json_type'] != 'merged':
+					col += self._check_to_write(row, col, 'pass_fail_status', azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'pass_fail_3x3_status', azure, metrics, Sheet)
+				elif 'json_type' in metrics and metrics['json_type'] == 'merged':
+					# if this is a tumor_normal comparison and the runs have been merged and QCd, write this metric
+					if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+						col += self._check_to_write(row, col, 'pass_fail_3x3_status', azure, metrics, Sheet)
+					col += self._check_to_write(row, col, 'pass_fail_merged_status', azure, metrics, Sheet)
+				# if there are no cutoffs, then the script wont know if it passes or fails yet.
+			
+				# Set the color of this row according to the current color
+				Sheet.set_row(row, None, self.formats[azure])
+	
+				#run_num = int(metrics['run_num'])
+				#runs = int(metrics['runs'])
+
 				# Old naming sheme:
 				#col += self._check_to_write(row, col, 'polyclonal', "perc_format" + azure, metrics)
 				#col += self._check_to_write(row, col, 'mean', "num_format" + azure, metrics)
 				#col += self._check_to_write(row, col, 'median', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'polyclonality', "perc_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'mean_read_length', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'median_read_length', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'perc_exp_median_read_length', 'perc_format' + azure, metrics)
-				col += self._check_to_write(row, col, 'median_coverage_overall', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'amp_cov', "perc_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'begin_amp_cov', 'perc_format' + azure, metrics)
-				col += self._check_to_write(row, col, 'end_amp_cov', 'perc_format' + azure, metrics)
-				# give it the dummy 'end_amp_cov' key to write the function of +-10 bp difference. the = is for a function
-				col += self._check_to_write(row, col, 'end_amp_cov', '=perc_format' + azure, metrics)
+				#col += self._check_to_write(row, col, 'end_amp_cov', '=perc_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'total_covered', 'num_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'perc_expected', 'perc_format' + azure, metrics)
 	#			col += self._check_to_write(row, col, 'perc_targeted', 'perc_format' + azure, metrics)
 				# Old naming scheme:
 				#col += self._check_to_write(row, col, 'tstv', 'num_format' + azure, metrics)
-				if not ex_json_data or ('pool_dropout' in ex_json_data['analysis']['settings'] and ex_json_data['analysis']['settings']['pool_dropout'] == True):
-					col += self._check_to_write(row, col, 'pools_less_than_10', "num_format" + azure, metrics)
-					col += self._check_to_write(row, col, 'pools_between_10_and_50', "num_format" + azure, metrics)
-					col += self._check_to_write(row, col, 'pools_between_50_and_75', "num_format" + azure, metrics)
-					col += self._check_to_write(row, col, 'pools_pass', "num_format" + azure, metrics)
-					col += self._check_to_write(row, col, 'pools_total', "num_format" + azure, metrics)
-				col += self._check_to_write(row, col, 'ts_tv', 'dec3_format' + azure, metrics)
-				col += self._check_to_write(row, col, 'total_vars', 'num_format' + azure, metrics)
-				col += self._check_to_write(row, col, 'num_het', 'num_format' + azure, metrics)
-				col += self._check_to_write(row, col, 'num_hom', 'num_format' + azure, metrics)
-				col += self._check_to_write(row, col, 'het_hom', 'dec3_format' + azure, metrics)
-				# Now write the pass/fail status
-				if ex_json_data and 'cutoffs' in ex_json_data['analysis']['settings']:
-					if 'pass_fail_status' in metrics and metrics['pass_fail_status'] == 'fail':
-						self.QCsheet.write(row, col, metrics['pass_fail_status'].upper(), self.formats['red'])
-						col += 1
-					else:
-						col += self._check_to_write(row, col, 'pass_fail_status', azure, metrics)
-					# if the 3x3 tables ran, then the run status must be 'pass'
-					if 'pass_fail_3x3_status' in metrics and metrics['pass_fail_3x3_status'] == 'fail':
-						self.QCsheet.write(row, col, metrics['pass_fail_3x3_status'].upper(), self.formats['red'])
-						col += 1
-					else:
-						col += self._check_to_write(row, col, 'pass_fail_3x3_status', azure, metrics)
-					# if this is a tumor_normal comparison and the runs have been merged and QCd, write this metric
-					if 'pass_fail_merged_status' in metrics and metrics['pass_fail_merged_status'] == 'fail':
-						self.QCsheet.write(row, col, metrics['pass_fail_merged_status'].upper(), self.formats['red'])
-						col += 1
-					else:
-						col += self._check_to_write(row, col, 'pass_fail_merged_status', azure, metrics)
-				else:
-					# if there are no cutoffs, then the script wont know if it passes or fails yet.
-					self.QCsheet.write(row, col, 'pending', self.formats[azure])
-					col += 1
-					self.QCsheet.write(row, col, 'pending', self.formats[azure])
-					col += 1
-				#run_num = int(metrics['run_num'])
-				#runs = int(metrics['runs'])
 		
 				# This was never finished. The idea was to choose a representative 3x3 table and show its summary here, but it never really worked out.
 #				# Now write the N-N pair and the T-T pairs
@@ -419,7 +382,7 @@ class XLSX_Writer():
 #				col += self._check_to_write(row, col, 'same_error_rate', 'perc_format' + azure, metrics)
 #				try:
 #					if 'same_zscore' in metrics and float(metrics['same_zscore']) > 3:
-#						self.QCsheet.write_number(row, col, float(metrics['same_zscore']), dec3_format_red)
+#						self.RunSheet.write_number(row, col, float(metrics['same_zscore']), dec3_format_red)
 #						metrics['same_status'] = 'Fail'
 #						col += 1
 #					else:
@@ -436,7 +399,7 @@ class XLSX_Writer():
 #				col += self._check_to_write(row, col, 'tn_error_rate', 'perc_format' + azure, metrics)
 #				try:
 #					if 'tn_zscore' in metrics and float(metrics['tn_zscore']) > 3:
-#						self.QCsheet.write_number(row, col, float(metrics['tn_zscore']), dec3_format_red)
+#						self.RunSheet.write_number(row, col, float(metrics['tn_zscore']), dec3_format_red)
 #						metrics['tn_status'] = 'Fail'
 #						col += 1
 #					else:
@@ -444,11 +407,6 @@ class XLSX_Writer():
 #				except ValueError:
 #					col += self._check_to_write(row, col, 'tn_zscore', '' + azure, metrics)
 #				col += self._check_to_write(row, col, 'tn_status', "" + azure, metrics)
-			
-				# Set the color of this row according to the current color
-				self.QCsheet.set_row(row, None, self.formats[azure])
-	
-				row += 1
 
 
 	# Write the multiple run Info 3x3 tables if specified
