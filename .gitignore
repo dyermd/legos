@@ -8,6 +8,7 @@
 # ignore spreadsheets
 *.csv
 *.xlsx
+*.vcf
 
 # ignore OS generated files
 .DS_Store
