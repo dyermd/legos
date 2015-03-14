@@ -234,6 +234,9 @@ class QC_Sample:
 			print "Generated the QC spreadsheet successfully!"
 			# t would be really really cool if I could send them an email with the xlsx file!!
 			if self.options.email and 'emails' in self.sample_json:
+				# TEMP add my email automatically
+				if 'jlaw@childhooddiseases.org' not in self.sample_json['emails']:
+					self.sample_json['emails'].append('jlaw@childhooddiseases.org')
 				for email in self.sample_json['emails']:
 					# this command will email the status of the sample, and attach the excel spreadsheet
 					email_command = '\tprintf "%s finished with a status of %s. \\n`grep sample_status *.json`\\n" | (cat - && uuencode %s %s) | ssmtp -vvv %s >/dev/null 2>&1\n' % (self.sample_json['sample_name'], "pass", xlsx_file, xlsx_file.split('/')[-1], email)
