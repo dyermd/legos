@@ -19,6 +19,7 @@ from optparse import OptionParser
 
 class Compare_VCFs:
 	def __init__(self, options):
+		self.options = options
 		self.vcf1 = open(options.vcfs[0], 'r')
 		self.vcf2 = open(options.vcfs[1], 'r')
 		self.WT1_Cutoff = options.gt_cutoffs[0]
@@ -101,8 +102,8 @@ class Compare_VCFs:
 	# write the 3x3 table results to the JSON file.
 	def write_json_output(self):
 		# get the sample and run info from each run's json files.
-		json1 = self.getJsonData(options.jsons[0])
-		json2 = self.getJsonData(options.jsons[1])
+		json1 = self.getJsonData(self.options.jsons[0])
+		json2 = self.getJsonData(self.options.jsons[1])
 		
 		# Now that we have all of GT info for each variant listed in both VCFs, get the error metrics, and write the json output.
 		total_vars = 0
@@ -139,13 +140,13 @@ class Compare_VCFs:
 		self.change_counts['perc_avail_bases'] = self.total_eligible_bases / self.total_possible_bases
 		#self.change_counts['reassigned_GTs'] = self.reassigned_GTs
 		
-		if not os.path.isfile(options.json_out):
+		if not os.path.isfile(self.options.json_out):
 			# If the QC json file doesn't exist yet, then make it.
 			json_out = {'sample': json1['sample']}
 			json_out = {'sample_name': json1['sample']}
 		else:
 			# add this comparisons QC metrics to the sample's QC json file.
-			json_out = json.load(open(options.json_out))
+			json_out = json.load(open(self.options.json_out))
 		
 		# If no QC_comparisons have been added yet, then start the list
 		if 'QC_comparisons' not in json_out:
@@ -153,10 +154,12 @@ class Compare_VCFs:
 		
 		# set the comp_type and chromosome
 		comp_type = self.change_counts['run1_type'] + "_" + self.change_counts['run2_type']
-		if not options.chr:
+		if "718" in self.options.outCSV:
+			chr = "718"
+		elif not self.options.chr:
 			chr = 'all'
 		else:
-			chr = options.chr
+			chr = self.options.chr
 		# check to add the chr dictionary
 		if chr not in json_out['QC_comparisons']:
 			json_out['QC_comparisons'][chr] = {}
@@ -177,7 +180,7 @@ class Compare_VCFs:
 		json_out['json_type'] = 'QC_comparisons'
 		
 		# dump the json out file
-		with open(options.json_out, 'w') as newJSONFile:
+		with open(self.options.json_out, 'w') as newJSONFile:
 			json.dump(json_out, newJSONFile, sort_keys=True, indent=4)
 			
 		self.vcf1.close()
@@ -338,7 +341,6 @@ if __name__ == "__main__":
 	parser.add_option('-b', '--bases', dest='bases', nargs=2, type="float", help='1. total_eligible_bases (total bases available with good depth in each bam file) 2. Total possible bases (total baess available in the bed file)')
 	parser.add_option('-o', '--out_csv', dest='outCSV', help='Output csv file to summarize the matched variants')
 	parser.add_option('-t', '--json_out', dest='json_out',  help='This json file will hold the QC error metrics for this comparison. QC_generateSheets.py will use this json file to generate the master spreadsheet')
-	parser.add_option('-c', '--cds', dest='cds', action="store_true", help='Optional. Add "CDS" to the title of the 3x3 table. This option should be used if the --run_gatk_twice option is specified in QC_2Runs.sh.')
 	parser.add_option('-r', '--chr', dest='chr', help='Optional. Add the specified chromosome to the title of the 3x3 table. This option should be used if only chr1 is being QCd')
 	
 	(options, args) = parser.parse_args()
@@ -348,7 +350,8 @@ if __name__ == "__main__":
 		print "USAGE ERROR: --vcfs, --jsons, --gt_cutoffs, --total_bases, --out_csv, and --json_out are all required. Only --cds and --chr are optional."
 		print "Options given: --vcf %s --jsons %s --gt_cutoffs %s --total_bases %s --out_csv %s --json_out %s"%(options.vcfs, options.jsons, options.gt_cutoffs, options.bases, options.outCSV, options.json_out)
 		print "Args given: %s"%args
-		print "use -h for help"
+		parser.print_help()
+		#print "use -h for help"
 		sys.exit(8)
 
 	compare_vcfs = Compare_VCFs(options)

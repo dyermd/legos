@@ -157,7 +157,7 @@ class TemplateWriter:
     # @param file The file handle
     def __writeQCSampleTemplate(self, job, fileHandle):
 		# the settings should all be contained within the json file.
-        fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s \n'%(self.__softwareDirectory, job['json_file']))
+        fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s -e \n'%(self.__softwareDirectory, job['json_file']))
 		# use this for if the samples you're running don't have the cutoffs set or need to have teh pass/fail status set
         #fileHandle.write('python %s/scripts/QC/QC_sample.py --json %s --update_cutoffs /home/ionadmin/jeff/PNET.json --pass_fail \n'%(self.__softwareDirectory, job['json_file']))
 		# use this for creating all 3x3 tables regardless of pass/fail status
@@ -168,6 +168,8 @@ class TemplateWriter:
         #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --get_alignment_stats\n'%(self.__softwareDirectory, job['json_file']))
 		# use this to correct the merged bam name
         #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --fix_merged_names\n'%(self.__softwareDirectory, job['json_file']))
+		# use this to create the 718 gene list
+        #fileHandle.write('python2.7 %s/scripts/QC/QC_sample.py --json %s --get_718_subset\n'%(self.__softwareDirectory, job['json_file']))
         #add other types later
 
 

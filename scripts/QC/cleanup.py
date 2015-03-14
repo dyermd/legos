@@ -54,6 +54,9 @@ class Cleanup:
 		ionstats_files = glob.glob("core.ion*")
 		for ion_file in ionstats_files:
 			os.remove(ion_file)
+		usage_files = glob.glob("usage*")
+		for usage in usage_files:
+			os.remove(usage)
 
 
 	# Cleanup the PTRIM and assorted files generated.

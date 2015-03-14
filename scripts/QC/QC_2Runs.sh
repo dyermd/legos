@@ -40,16 +40,18 @@ All options up to --gt_cutoffs are required.
 	-jp | --json_paras <Json_parameters1> <Json_parameters2> (two json parameters files used by TVC)
 	-d | --depth_cutoffs <Depth_Cutoff1> <Depth_Cutoff2> (Variants with depth < cutoff will be filtered out)
 	-gt | --gt_cutoffs <WT_Cutoff1> <HOM1_Cutoff1> <WT_Cutoff2> <HOM1_Cutoff2>
-	-cb | --cds_bed <path/to/CDS_bed> (This option should only be used if the user wants to run TVC using the Project bed, and then intersect the results with the CDS bed.)
 	-sb | --subset_bed <path/to/subset_bed> (If the user want to subset out certain genes from the Project_Bed)
-	-cd | --get_cds_depths (Normally, samtools depth is run using the subset of the beds specified above. If the cds_bed is specified, and this option is specified, samtools depth will be run twice.)
+	-v | --all_vcfs_dir <path/to/allRun1vsRun2> (In order to save time, skip running TVC and just subset the 718 gene set or chr1 from the all)
 	-chr | --subset_chr <chr#> (The chromosome specified here (for example: chr1) will be used to subset the VCF and BAM files)
 	-cl | --cleanup (If calling QC_getRunInfo.sh after this script, the PRTIM.bam is needed so DO NOT CALL CLEANUP. Delete temp_files used to create the two Output VCF files, the PTRIM.bam the chr_subset bam files if they were created.)
-	-cle | --cleanup_everything (Option not yet implemented: Delete everything but the log and the matched_variants.csv)
 	-B | --bases <total_eligible_bases> <total_possible_bases> (If these total bases have already been calculated you can include them here)
 EOF
 exit 8
 }
+	# option not supported anymore
+	#-cd | --get_cds_depths (Normally, samtools depth is run using the subset of the beds specified above. If the cds_bed is specified, and this option is specified, samtools depth will be run twice.)
+	#-cb | --cds_bed <path/to/CDS_bed> (This option should only be used if the user wants to run TVC using the Project bed, and then intersect the results with the CDS bed.)
+	#-cle | --cleanup_everything (Option not yet implemented: Delete everything but the log and the matched_variants.csv)
 
 # Checks to ensure that the files provided exist and are readable. 
 # @param $1 should be a list of files.
@@ -324,15 +326,10 @@ do
 			RUNNING="$RUNNING --subset_bed: $2 "
 			shift 2
 			;;
-		-cb | --cds_bed)
-			CDS_BED=$2
-			RUNNING="$RUNNING --cds_bed: $2 "
+		-v | --all_vcfs_dir)
+			ALL_OUTPUT_DIR=$2
+			RUNNING="$RUNNING --all_vcfs_dir: $2 "
 			shift 2
-			;;
-		-cd | --get_cds_depths)
-			GET_CDS_DEPTHS="True"
-			RUNNING="$RUNNING --get_cds_depths "
-			shift 
 			;;
 		-chr | --subset_chr)
 			CHR=$2
@@ -438,14 +435,14 @@ else
 	#bedtools intersect -a ${TEMP_DIR}/${intersected_bed} -b ${BED} -u -f 0.99 > ${TEMP_DIR}/intersect_${bed_name} 2>>$log
 	intersected_bed="$BED"
 
-	# interstect the subset.bed file with the specified subset bed files
-	# if GET_CDS_DEPTHS is true, then the cds bed will not be subset out here so that all of the variants will be available, and  samtools depth can be run twice.
-	if [ "$CDS_BED" != "" -a "$GET_CDS_DEPTHS" != "True" ]; then
-		cds_name=`basename $CDS_BED`
-		# -f .99 option is not used here because the begin and end pos of the CDS region will not match up with the project bed file (it has intronic regions)
-		bedtools intersect -a $BED -b ${CDS_BED} > ${TEMP_DIR}/intersect_${cds_name} 2>>$log
-		intersected_bed="${TEMP_DIR}/intersect_${cds_name}"
-	fi
+	## interstect the subset.bed file with the specified subset bed files
+	## if GET_CDS_DEPTHS is true, then the cds bed will not be subset out here so that all of the variants will be available, and  samtools depth can be run twice.
+	#if [ "$CDS_BED" != "" -a "$GET_CDS_DEPTHS" != "True" ]; then
+	#	cds_name=`basename $CDS_BED`
+	#	# -f .99 option is not used here because the begin and end pos of the CDS region will not match up with the project bed file (it has intronic regions)
+	#	bedtools intersect -a $BED -b ${CDS_BED} > ${TEMP_DIR}/intersect_${cds_name} 2>>$log
+	#	intersected_bed="${TEMP_DIR}/intersect_${cds_name}"
+	#fi
 	if [ "$SUBSET_BED" != "" ]; then
 		subset_name=`basename $SUBSET_BED`
 		bedtools intersect -a ${intersected_bed} -b ${SUBSET_BED} -u -f 0.99 > ${TEMP_DIR}/intersect2_${subset_name} 2>>$log
@@ -467,8 +464,21 @@ else
 
 	bed_name=`basename $intersected_bed`
 	# Intersect the low_cov_subset.bed with the first bed specified. This shouldn't normally be needed, but it is a good precaution.
-	bedtools intersect -a ${TEMP_DIR}/low_cov_subset.bed -b ${intersected_bed} -u -f 0.99 > ${TEMP_DIR}/subset_${bed_name} 2>>$log
+	bedtools intersect -a ${TEMP_DIR}/low_cov_subset.bed -b ${intersected_bed} -u -f 0.99 | bedtools sort -i | bedtools merge -i > ${TEMP_DIR}/subset_${bed_name} 2>>$log
 	intersected_bed="${TEMP_DIR}/subset_${bed_name}"
+
+	# check if we can subset the all comparison here
+	if [ "$SUBSET_BED" != "" -a "$ALL_OUTPUT_DIR" != "" -a \
+		"`find ${ALL_OUTPUT_DIR}/VCF1_Final.vcf -type f 2>/dev/null`" -a \
+		"`find ${ALL_OUTPUT_DIR}/VCF2_Final.vcf -type f 2>/dev/null`" ]; then
+		# subset out the SUBSET_BED file from the allVCF comparison
+		echo "	Subsetting out the $intersected_bed file from the $ALL_OUTPUT_DIR comparison"
+		echo "	Subsetting out the $intersected_bed file from the $ALL_OUTPUT_DIR comparison" >>$log
+		bedtools intersect -header -a ${ALL_OUTPUT_DIR}/VCF1_Final.vcf -b $intersected_bed > ${OUTPUT_DIR}/VCF1_Final.vcf
+		bedtools intersect -header -a ${ALL_OUTPUT_DIR}/VCF2_Final.vcf -b $intersected_bed > ${OUTPUT_DIR}/VCF2_Final.vcf
+		# now subset the Depths files. Had to use python because the Both_Runs_depths is not in bed format.
+		python ${QC_SCRIPTS}/subset_depths.py -b $SUBSET_BED -d ${ALL_OUTPUT_DIR}/Both_Runs_depths -o ${OUTPUT_DIR}/Both_Runs_depths
+	fi
 
 	# Only run this step if the Final VCF files have not already been created
 	if [ ! "`find ${OUTPUT_DIR}/VCF1${CHR}_Final.vcf -type f 2>/dev/null`" -o ! "`find ${OUTPUT_DIR}/VCF2${CHR}_Final.vcf -type f 2>/dev/null`" ]; then

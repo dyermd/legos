@@ -127,7 +127,7 @@ class QC_Run:
 	# QC two runs with each other
 	# For Tumor / Normal pairs, Run1 should be the normal run, and Run2 should be the tumor run.
 	# Output will be put into a dir like: sample1/QC/Run1vsRun2
-	def QC_2Runs(self, sample_json, run1, run2, pref1, pref2, recalc_3x3_tables=False, merged=''):
+	def QC_2Runs(self, sample_json, run1, run2, pref1, pref2, merged=''):
 		run1_json = json.load(open(run1))
 		run2_json = json.load(open(run2))
 		
@@ -186,17 +186,18 @@ class QC_Run:
 				# subset this specified chromosome
 				if chromosome == "718":
 					qc2runs += "--subset_bed %s "%sample_json['analysis']['settings']['subset_bed']
+					qc2runs += "--all_vcfs_dir %s/all%svs%s "%(qc_folder, run1_json['run_name'], run2_json['run_name'])
 				elif chromosome != "all":
 					qc2runs += "--subset_chr %s "%chromosome
 	
 				# if the recalc option is specified, we might be able to pass in the total eligible and possible bases because those shouldn't change (unless the amplicon cutoff is changed from 30x).
-				if recalc_3x3_tables and 'old_GTs' in qc_json_data and 'QC_comparisons' in qc_json_data['old_GTs'] and \
-					chromosome in qc_json_data['old_GTs']['QC_comparisons'] and comp_type in qc_json_data['old_GTs']['QC_comparisons'][chromosome] and \
-					run1vsrun2 in qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]:
-					# get the bases and add them to the command
-					# recalculate the total_possible_bases
-					total_possible_bases = int(1 / (qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['perc_avail_bases'] / qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['total_eligible_bases']))
-					qc2runs += "--bases %s %s "%(qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['total_eligible_bases'], total_possible_bases)
+				#if recalc_3x3_tables and 'old_GTs' in qc_json_data and 'QC_comparisons' in qc_json_data['old_GTs'] and \
+				#	chromosome in qc_json_data['old_GTs']['QC_comparisons'] and comp_type in qc_json_data['old_GTs']['QC_comparisons'][chromosome] and \
+				#	run1vsrun2 in qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]:
+				#	# get the bases and add them to the command
+				#	# recalculate the total_possible_bases
+				#	total_possible_bases = int(1 / (qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['perc_avail_bases'] / qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['total_eligible_bases']))
+				#	qc2runs += "--bases %s %s "%(qc_json_data['old_GTs']['QC_comparisons'][chromosome][comp_type]['total_eligible_bases'], total_possible_bases)
 				#"--cleanup " # The main cleanup will be done at the end of this script because the PTRIM.bam is needed for QC_getRunInfo.sh, and the chr_subset is needed for each run comparison.
 		
 				#run the qc2runs command

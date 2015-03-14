@@ -9,6 +9,7 @@ import sys
 import re
 import json
 import glob
+import shutil
 from QC_Run import QC_Run
 from merger import Merger
 from cleanup import Cleanup
@@ -32,7 +33,7 @@ class QC_Sample:
 			# Use the sample_status here to not re-run the QC and to not overwrite run status. The 'sample_status' should be reset to 'pushed' when new runs are pushed..
 			#if self.sample_json['sample_status'] != 'pending_merge' and self.sample_json['sample_status'] != 'pending_3x3_review' and self.sample_json['sample_status'] != 'merged':
 			# if the user specified the '--pass_fail' option, then run this part still
-			if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail or self.options.qc_all or self.options.recalc_3x3_tables:
+			if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail or self.options.qc_all:
 				# QC the normal runs with each other
 				self.QC_runs(self.sample_json['runs'])
 				# write the sample json file
@@ -73,7 +74,7 @@ class QC_Sample:
 				# Use the sample_status here to not re-run the QC and to not overwrite run status. The 'sample_status' should be reset to 'pushed' when new runs are pushed..
 				#if self.sample_json['sample_status'] != 'pending_merge' and self.sample_json['sample_status'] != 'pending_3x3_review' and self.sample_json['sample_status'] != 'merged':
 				# if the user specified the '--pass_fail' option, then run this part still
-				if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail or self.options.qc_all or self.options.recalc_3x3_tables:
+				if self.sample_json['sample_status'] == 'pushed' or self.options.pass_fail or self.options.qc_all:
 					# QC the normal or tumor runs with each other
 					self.QC_runs(normal_runs, 'normal_')
 					self.QC_runs(tumor_runs, 'tumor_')
@@ -232,7 +233,7 @@ class QC_Sample:
 		else:
 			print "Generated the QC spreadsheet successfully!"
 			# t would be really really cool if I could send them an email with the xlsx file!!
-			if 'emails' in self.sample_json:
+			if self.options.email and 'emails' in self.sample_json:
 				for email in self.sample_json['emails']:
 					# this command will email the status of the sample, and attach the excel spreadsheet
 					email_command = '\tprintf "%s finished with a status of %s. \\n`grep sample_status *.json`\\n" | (cat - && uuencode %s %s) | ssmtp -vvv %s >/dev/null 2>&1\n' % (self.sample_json['sample_name'], "pass", xlsx_file, xlsx_file.split('/')[-1], email)
@@ -299,6 +300,51 @@ class QC_Sample:
 		# copy the xlsx file here because it didn't get copied for a lot of samples
 		self._make_xlsx()
 	
+	# subset out the 718 gene set from the final merged PNET 3x3 tables
+	def get_718_subset(self):
+		# add the path to the 718 subset:
+		self.sample_json['analysis']['settings']['subset_bed'] = '/rawdata/support_files/BED/PNET/AmpliSeqExome_PNET_subset.bed'
+		self.sample_json['analysis']['settings']['chromosomes_to_analyze_merged'] = ['all', '718']
+		if 'results_qc_json' not in self.sample_json and 'results_QC_json' in self.sample_json:
+			self.sample_json['results_qc_json']	= self.sample_json['results_QC_json']
+		self.sample_json['emails'] = ['jlaw@childhooddiseases.org']
+
+		#self.sample_json['sample_status'] = 'pending_merge'
+		write_json(self.sample_json['json_file'], self.sample_json)
+		#Normal_Merged1vsTumor_Merged1
+		#NMerge1vsTMerged1
+		qc_comp_dir = ''
+		if os.path.isdir("%s/allNMerged1vsTMerged1"%self.sample_json['qc_folder']):
+			qc_comp_dir = "%s/allNMerged1vsTMerged1"%self.sample_json['qc_folder']
+			qc_comp = "NMerged1vsTMerged1"
+		elif os.path.isdir("%s/allNormal_Merged1vsTumor_Merged1"%self.sample_json['qc_folder']):
+			qc_comp_dir = "%s/allNormal_Merged1vsTumor_Merged1"%self.sample_json['qc_folder']
+			qc_comp = "Normal_Merged1vsTumor_Merged1"
+		if qc_comp_dir != '':
+			results_qc_json = json.load(open(self.sample_json['results_qc_json']))
+			# fix the name of the folder and the name in the results_qc_json
+			normal_merged_name = json.load(open(self.sample_json['merged_normal_json']))['run_name']
+			tumor_merged_name = json.load(open(self.sample_json['merged_tumor_json']))['run_name']
+			new_qc_comp = "%svs%s"%(normal_merged_name, tumor_merged_name)
+			print "moving %s to %s"%(qc_comp_dir, "%s/all%s"%(self.sample_json['qc_folder'], new_qc_comp))
+			shutil.move(qc_comp_dir, "%s/all%s"%(self.sample_json['qc_folder'], new_qc_comp))
+	
+			results_qc_json = json.load(open(self.sample_json['results_qc_json']))
+			new_qc_comp_dict = results_qc_json['QC_comparisons']['all']['normal_tumor'][qc_comp]
+			del results_qc_json['QC_comparisons']['all']['normal_tumor'][qc_comp]
+	
+			results_qc_json['QC_comparisons']['all']['normal_tumor'][new_qc_comp] = new_qc_comp_dict
+			results_qc_json['sample_name'] = self.sample_json['sample_name']
+			results_qc_json['sample'] = self.sample_json['sample_name']
+			write_json(self.sample_json['results_qc_json'], results_qc_json)
+			
+		if 'merged_normal_json' in self.sample_json and 'merged_tumor_json' in self.sample_json:
+			print "Running QC_2Runs"
+			self.sample_json, qc_json = self.qc_run.QC_2Runs(self.sample_json, self.sample_json['merged_normal_json'], self.sample_json['merged_tumor_json'], 'normal_', 'tumor_', '_merged')
+			print 'done'
+			# done for now
+			self._make_xlsx()
+
 
 if __name__ == '__main__':
 	
@@ -307,12 +353,14 @@ if __name__ == '__main__':
 	
 	# add the options to parse
 	parser.add_option('-j', '--json', dest='json', help="A sample's json file which contains the necessary options and list of runs to QC with each other")
+	parser.add_option('-e', '--email', dest='email', action='store_true', help="Option to send an email when job finishes")
 	#parser.add_option('-m', '--merge', dest='merge', help="Merge the runs of a sample. Currently Automatic 'pass/fail' status is not updated, so this script must be run again after cutoffs are figured out.")
 	parser.add_option('-q', '--qc_all', dest='qc_all', action='store_true', help="Generate the 3x3 tables for all run comparisons, even if they fail.")
 	parser.add_option('-p', '--pass_fail', dest='pass_fail', action='store_true', help="Overwrite the 'pass/fail' status of each run according to the cutoffs found in the json file. Normally this step is skipped if all runs have finished the QC process, but this option will overwrite the 'pass/fail' status found.")
-	parser.add_option('-r', '--recalc_3x3_tables', dest='recalc_3x3_tables', action='store_true', help="recalculate the 3x3 tables (original use was for the new GT cutoffs")
+	#parser.add_option('-r', '--recalc_3x3_tables', dest='recalc_3x3_tables', action='store_true', help="recalculate the 3x3 tables (original use was for the new GT cutoffs")
 	parser.add_option('-u', '--update_cutoffs', dest='update_cutoffs', help="Change the cutoffs found in the JSON file using an example json file with the corrected cutoffs. Will be done before anything else in the script.")
 	parser.add_option('-s', '--get_alignment_stats', dest='get_alignment_stats', action='store_true', help="Gather the alignment stats for the runs and merged files")
+	parser.add_option('-b', '--get_718_subset', dest='get_718_subset', action='store_true', help="Subset the 718 gene set for the 3x3 tables")
 	(options, args) = parser.parse_args()
 
 	# check to make sure the inputs are valid
@@ -337,12 +385,14 @@ if __name__ == '__main__':
 			qc_sample.update_cutoffs()
 
 		# if the recalc_3x3_tables flag is specified, then rearrange the results_QC.json file so that the 3x3 tables will be recalculated.
-		if options.recalc_3x3_tables:
-			qc_sample.recalc_3x3_tables()
+		#if options.recalc_3x3_tables:
+		#	qc_sample.recalc_3x3_tables()
 
 		# if the user specified, then only get_alignment_stats
 		if options.get_alignment_stats:
 			qc_sample.get_alignment_stats()
+		elif options.get_718_subset:
+			qc_sample.get_718_subset()
 		else:
 			# QC and merge all of the runs
 			qc_sample.QC_merge_runs()
