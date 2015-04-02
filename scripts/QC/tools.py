@@ -41,3 +41,12 @@ def getTimestamp():
 	#return the stamp
 	return(timeStamp)
 
+def getDate():
+	#get the time / timestamp
+	currentTime = time.time()
+	date = datetime.datetime.fromtimestamp(currentTime).strftime('%m%d%Y')
+
+	#return the stamp
+	return(date)
+
+

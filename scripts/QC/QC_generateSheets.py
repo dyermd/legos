@@ -175,6 +175,7 @@ class XLSX_Writer():
 		col += self._writeHeaderCell(col, "HET/HOM ratio (single allele rates)", 13, self.Merged)
 		# check to see if the N or T should be written
 		if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+			col += self._writeHeaderCell(col, "% Overlapping Bases", 8, self.Merged)
 			col += self._writeHeaderCell(col, "Tumor/Normal Comparisons: No evidence of contamination", 10, self.Merged)
 		try:
 			# write this final header for tumor_normal comparisons
@@ -352,6 +353,7 @@ class XLSX_Writer():
 				elif 'json_type' in metrics and metrics['json_type'] == 'merged':
 					# if this is a tumor_normal comparison and the runs have been merged and QCd, write this metric
 					if ex_json_data and 'sample_type' in ex_json_data and ex_json_data['sample_type'] == 'tumor_normal':
+						col += self._check_to_write(row, col, 'merged_perc_avail_bases', 'perc_format' + azure, metrics, Sheet)
 						col += self._check_to_write(row, col, 'pass_fail_3x3_status', azure, metrics, Sheet)
 					col += self._check_to_write(row, col, 'pass_fail_merged_status', azure, metrics, Sheet)
 				# if there are no cutoffs, then the script wont know if it passes or fails yet.

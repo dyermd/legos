@@ -224,32 +224,32 @@ class QC_Run:
 					and run_json['run_data']['perc_exp_median_read_length'] < self.sample_json['analysis']['settings']['cutoffs']['perc_exp_median_read_length'] \
 					and not ('ffpe' in self.sample_json['analysis']['settings'] and self.sample_json['analysis']['settings']['ffpe'] == True):
 				print "%s/%s fialed the 'perc_exp_median_read_length' flag. %.2f < %.2f"%(run_json['sample'], run_json['run_name'], run_json['run_data']['perc_exp_median_read_length'], self.sample_json['analysis']['settings']['cutoffs']['perc_exp_median_read_length'])
-				status = 'fail'
+				status = 'FAIL'
 			# check the coverage at the +10 and -10 positions
 			if 'begin_end_amp_cov' in self.sample_json['analysis']['settings']['cutoffs'] \
 					and run_json['run_data']['begin_amp_cov'] < self.sample_json['analysis']['settings']['cutoffs']['begin_end_amp_cov']:
 				print "%s/%s fialed the 'begin_amp_cov' flag. %.2f < %.2f"%(run_json['sample'], run_json['run_name'], run_json['run_data']['begin_amp_cov'], self.sample_json['analysis']['settings']['cutoffs']['begin_end_amp_cov'])
-				status = 'fail'
+				status = 'FAIL'
 			if 'begin_end_amp_cov' in self.sample_json['analysis']['settings']['cutoffs'] \
 					and run_json['run_data']['end_amp_cov'] < self.sample_json['analysis']['settings']['cutoffs']['begin_end_amp_cov']:
 				print "%s/%s fialed the 'end_amp_cov' flag. %.2f < %.2f"%(run_json['sample'], run_json['run_name'], run_json['run_data']['end_amp_cov'], self.sample_json['analysis']['settings']['cutoffs']['begin_end_amp_cov'])
-				status = 'fail'
+				status = 'FAIL'
 			# checck the coverage
 			if 'run_amp_cov' in self.sample_json['analysis']['settings']['cutoffs'] \
 					and run_json['run_data']['amp_cov'] < self.sample_json['analysis']['settings']['cutoffs']['run_amp_cov']:
 				print "%s/%s fialed the 'run_amp_cov' flag. %.2f < %.2f"%(run_json['sample'], run_json['run_name'], run_json['run_data']['amp_cov'], self.sample_json['analysis']['settings']['cutoffs']['run_amp_cov'])
-				status = 'fail'
+				status = 'FAIL'
 			# check the pool coverage
-			if self.sample_json['analysis']['settings']['pool_dropout'] and 'pools_between_10_and_50' in run_json['run_data'] and 'pools_less_than_10' in run_json['run_data']:
-				# currently the only options are 10, 50, and 75 so just stick with this.
-				if run_json['run_data']['pools_between_10_and_50'] > 0 or run_json['run_data']['pools_less_than_10'] > 0:
-					print "%s/%s has pools with < 50%% covergae"%(run_json['sample'], run_json['run_name'])
-					status = 'fail'
+			#if self.sample_json['analysis']['settings']['pool_dropout'] and 'pools_between_10_and_50' in run_json['run_data'] and 'pools_less_than_10' in run_json['run_data']:
+			#	# currently the only options are 10, 50, and 75 so just stick with this.
+			#	if run_json['run_data']['pools_between_10_and_50'] > 0 or run_json['run_data']['pools_less_than_10'] > 0:
+			#		print "%s/%s has pools with < 50%% covergae"%(run_json['sample'], run_json['run_name'])
+			#		status = 'FAIL'
 		# Update the merged bam status differently 
 		elif run_json['json_type'] == 'merged':
 			if 'merged_amp_cov' in self.sample_json['analysis']['settings']['cutoffs'] and run_json['run_data']['amp_cov'] < self.sample_json['analysis']['settings']['cutoffs']['merged_amp_cov']:
 				print "%s/%s fialed the 'merged_amp_cov' flag. %.2f < %.2f"%(run_json['sample'], run_json['run_name'], run_json['run_data']['amp_cov'], self.sample_json['analysis']['settings']['cutoffs']['merged_amp_cov'])
-				status = 'fail'
+				status = 'REQUEUE'
 		# set the pass fail status for this run
 		run_json['pass_fail_status'] = status
 		# write this run's updated status to the json file
@@ -284,8 +284,8 @@ class QC_Run:
 				if comp_type in qc_data['QC_comparisons'][chr] and run1vsrun2 in qc_data['QC_comparisons'][chr][comp_type] \
 						and qc_data['QC_comparisons'][chr][comp_type][run1vsrun2]['error_rate'] > sample_json['analysis']['settings']['cutoffs']['error_rate']:
 					print "%s%svs%s Failed with an error rate too high of %.3e"%(chr, run1_json['run_name'], run2_json['run_name'], qc_data['QC_comparisons'][chr][comp_type][run1vsrun2]['error_rate'])
-					run1_json['pass_fail_3x3_status'] = "fail"
-					run2_json['pass_fail_3x3_status'] = "fail"
+					run1_json['pass_fail_3x3_status'] = 'FAIL'
+					run2_json['pass_fail_3x3_status'] = 'FAIL'
 					sample_json['sample_status'] = 'pending_3x3_review'
 
 				# add this variable for the final merged normal/tumor comparison
